@@ -41,3 +41,12 @@
 2026-01-06 22:59:54,203 - INFO - Application started
 2026-01-06 23:00:03,582 - INFO - Application started
 2026-01-06 23:00:18,783 - INFO - Application started
+2026-01-07 01:01:33,460 - INFO - Application started
+2026-01-07 01:01:33,468 - INFO - Migrating scores table: adding detailed_age_group column
+2026-01-07 01:01:33,472 - INFO - Migrating responses table: adding detailed_age_group column
+2026-01-07 01:02:04,174 - INFO - Session started | user=Anu | age=18 | education=Undergraduate | age_group=adult
+2026-01-07 01:06:38,223 - INFO - Application started
+2026-01-07 01:07:28,100 - INFO - Application started
+2026-01-07 01:07:39,563 - INFO - Session started | user=Anushka | age=18 | education=Postgraduate | age_group=adult
+2026-01-07 01:07:43,565 - INFO - User returned to home screen during test
+2026-01-07 01:07:53,051 - INFO - Session started | user=Anu | age=18 | education=Postgraduate | age_group=adult
