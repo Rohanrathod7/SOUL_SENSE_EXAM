@@ -110,9 +110,10 @@ Each question is rated on a 4-point Likert scale:
 It’s recommended to use a **virtual environment** to keep your project dependencies isolated from your system Python.
 
 1️⃣ Create a Virtual Environment  
-From your project root directory:  
+From your project root directory: 
+```bash
 python -m venv venv  
-
+```
 This will create a `venv/` folder inside your project.
 
 2️⃣ Activate the Virtual Environment  
@@ -190,4 +191,5 @@ Tests use temporary SQLite databases and do not affect production data.
 - Refactor complete
 - Tests added
 - Stable baseline for further enhancements (e.g., decorators, generators)
+
 
