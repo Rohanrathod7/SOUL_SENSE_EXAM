@@ -17,7 +17,10 @@ DEFAULT_CONFIG = {
     },
     "features": {
         "enable_journal": True,
-        "enable_analytics": True
+        "enable_analytics": True,
+        "loading_indicators": True,
+        "question_count": 10,
+        "sound_effects": True
     }
 }
 
