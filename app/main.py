@@ -33,11 +33,11 @@ THEMES = {
         "bg_primary": "#F5F7FA",
         "bg_secondary": "white",
         "text_primary": "#2C3E50",
-        "text_secondary": "#7F8C8D",
+        "text_secondary": "#555555", # Darker for better contrast (was #7F8C8D)
         "text_input": "#34495E",
-        "accent": "#2980B9",
-        "success": "#2E7D32",
-        "danger": "#C0392B",
+        "accent": "#2980B9", # Slightly darker blue for contrast
+        "success": "#2E7D32", # Darker green
+        "danger": "#C0392B", # Darker red
         "card_bg": "white",
         "input_bg": "white",
         "input_fg": "black",
@@ -55,10 +55,10 @@ THEMES = {
         "needs_work": "#F44336"
     },
     "dark": {
-        "bg_primary": "#121212",
+        "bg_primary": "#121212", # Darker bg
         "bg_secondary": "#1e1e1e",
         "text_primary": "#ffffff",
-        "text_secondary": "#e0e0e0",
+        "text_secondary": "#e0e0e0", # Lighter for better contrast (was #b0b0b0)
         "text_input": "#f0f0f0",
         "accent": "#5DADE2",
         "success": "#58D68D",
@@ -107,14 +107,14 @@ class SplashScreen:
         tk.Label(
             container,
             text="🧠",
-            font=("Arial", 40),
+            font=("Arial", 48), # Increased size
             bg=bg
         ).pack(pady=(10, 5))
 
         tk.Label(
             container,
             text="Soul Sense EQ Test",
-            font=("Arial", 20, "bold"),
+            font=("Arial", 24, "bold"), # Increased
             fg=fg,
             bg=bg
         ).pack(pady=5)
@@ -122,15 +122,15 @@ class SplashScreen:
         tk.Label(
             container,
             text="Assess your Emotional Intelligence",
-            font=("Arial", 10),
-            fg="#7F8C8D",
+            font=("Arial", 12), # Increased
+            fg="#555555" if theme == "light" else "#e0e0e0", # High contrast
             bg=bg
         ).pack(pady=5)
 
         self.loading_label = tk.Label(
             container,
             text="Loading...",
-            font=("Arial", 10),
+            font=("Arial", 12), # Increased
             fg="#555",
             bg=bg
         )
@@ -143,7 +143,7 @@ class SoulSenseApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Soul Sense EQ Test")
-        self.root.geometry("800x600") # Increased size for visual results
+        self.root.geometry("800x600") 
         
         # Load Theme
         self.current_theme_name = config.THEME
@@ -254,7 +254,7 @@ class SoulSenseApp:
         tk.Label(
             header_frame,
             text="🧠 Soul Sense",
-            font=("Arial", 22, "bold"),
+            font=("Arial", 26, "bold"), # Increased
             bg=self.colors["card_bg"],
             fg=self.colors["text_primary"]
         ).pack(side="left")
@@ -264,7 +264,7 @@ class SoulSenseApp:
             header_frame,
             text="🌓",
             command=self.toggle_theme,
-            font=("Arial", 12),
+            font=("Arial", 14), # Increased
             bg=self.colors["card_bg"],
             fg=self.colors["text_primary"],
             relief="flat",
@@ -276,7 +276,7 @@ class SoulSenseApp:
             header_frame,
             text="⚙️",
             command=self.show_settings,
-            font=("Arial", 12),
+            font=("Arial", 14), # Increased
             bg=self.colors["card_bg"],
             fg=self.colors["text_primary"],
             relief="flat",
@@ -286,19 +286,21 @@ class SoulSenseApp:
         tk.Label(
             card,
             text="Please login to continue",
-            font=("Arial", 11),
+            font=("Arial", 13), # Increased
             bg=self.colors["card_bg"],
             fg=self.colors["text_secondary"]
         ).pack(pady=(0, 20))
         
         # Form
-        tk.Label(card, text="Username", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 11, "bold")).pack(anchor="w", pady=(5, 2))
-        self.login_username_entry = ttk.Entry(card, font=("Arial", 12), width=30)
+        tk.Label(card, text="Username", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 13, "bold")).pack(anchor="w", pady=(5, 2))
+        self.login_username_entry = ttk.Entry(card, font=("Arial", 14), width=30)
         self.login_username_entry.pack(pady=5)
+        self.login_username_entry.focus_set() # Focus on start
         
-        tk.Label(card, text="Password", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 11, "bold")).pack(anchor="w", pady=(5, 2))
-        self.login_password_entry = ttk.Entry(card, font=("Arial", 12), width=30, show="*")
+        tk.Label(card, text="Password", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 13, "bold")).pack(anchor="w", pady=(5, 2))
+        self.login_password_entry = ttk.Entry(card, font=("Arial", 14), width=30, show="*")
         self.login_password_entry.pack(pady=5)
+        self.login_password_entry.bind('<Return>', lambda e: self.handle_login()) # Bind Enter
         
         button_frame = tk.Frame(card, bg=self.colors["card_bg"])
         button_frame.pack(pady=20)
@@ -307,7 +309,7 @@ class SoulSenseApp:
             button_frame,
             text="Login",
             command=self.handle_login,
-            font=("Arial", 12, "bold"),
+            font=("Arial", 14, "bold"), # Increased
             bg=self.colors["success"],
             fg="white",
             relief="flat",
@@ -319,7 +321,7 @@ class SoulSenseApp:
             button_frame,
             text="Sign Up",
             command=self.create_signup_screen,
-            font=("Arial", 12),
+            font=("Arial", 14), # Increased
             bg=self.colors["accent"],
             fg="white",
             relief="flat",
@@ -328,7 +330,7 @@ class SoulSenseApp:
         ).pack(side="left")
 
     def show_settings(self):
-        """Settings Window (Adapted from Upstream)"""
+        """Settings Window"""
         settings_win = tk.Toplevel(self.root)
         settings_win.title("Settings")
         settings_win.geometry("400x300")
@@ -373,25 +375,28 @@ class SoulSenseApp:
         card = tk.Frame(self.root, bg=self.colors["card_bg"], padx=30, pady=25)
         card.pack(pady=50)
         
-        tk.Label(card, text="🧠 Create Account", font=("Arial", 22, "bold"), bg=self.colors["card_bg"], fg=self.colors["text_primary"]).pack(pady=(0, 8))
+        tk.Label(card, text="🧠 Create Account", font=("Arial", 26, "bold"), bg=self.colors["card_bg"], fg=self.colors["text_primary"]).pack(pady=(0, 8))
+        tk.Label(card, text="Join Soul Sense EQ Test", font=("Arial", 13), bg=self.colors["card_bg"], fg=self.colors["text_secondary"]).pack(pady=(0, 20))
         
-        tk.Label(card, text="Username", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 11, "bold")).pack(anchor="w", pady=(5, 2))
-        self.signup_username_entry = ttk.Entry(card, font=("Arial", 12), width=30)
+        tk.Label(card, text="Username", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 13, "bold")).pack(anchor="w", pady=(5, 2))
+        self.signup_username_entry = ttk.Entry(card, font=("Arial", 14), width=30)
         self.signup_username_entry.pack(pady=5)
+        self.signup_username_entry.focus_set()
         
-        tk.Label(card, text="Password", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 11, "bold")).pack(anchor="w", pady=(5, 2))
-        self.signup_password_entry = ttk.Entry(card, font=("Arial", 12), width=30, show="*")
+        tk.Label(card, text="Password", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 13, "bold")).pack(anchor="w", pady=(5, 2))
+        self.signup_password_entry = ttk.Entry(card, font=("Arial", 14), width=30, show="*")
         self.signup_password_entry.pack(pady=5)
         
-        tk.Label(card, text="Confirm Password", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 11, "bold")).pack(anchor="w", pady=(5, 2))
-        self.signup_confirm_entry = ttk.Entry(card, font=("Arial", 12), width=30, show="*")
+        tk.Label(card, text="Confirm Password", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 13, "bold")).pack(anchor="w", pady=(5, 2))
+        self.signup_confirm_entry = ttk.Entry(card, font=("Arial", 14), width=30, show="*")
         self.signup_confirm_entry.pack(pady=5)
+        self.signup_confirm_entry.bind('<Return>', lambda e: self.handle_signup())
         
         button_frame = tk.Frame(card, bg=self.colors["card_bg"])
         button_frame.pack(pady=20)
         
-        tk.Button(button_frame, text="Create Account", command=self.handle_signup, font=("Arial", 12, "bold"), bg=self.colors["success"], fg="white", relief="flat", padx=20, pady=8).pack(side="left", padx=(0, 10))
-        tk.Button(button_frame, text="Back to Login", command=self.create_login_screen, font=("Arial", 12), bg="#757575", fg="white", relief="flat", padx=20, pady=8).pack(side="left")
+        tk.Button(button_frame, text="Create Account", command=self.handle_signup, font=("Arial", 14, "bold"), bg=self.colors["success"], fg="white", relief="flat", padx=20, pady=8).pack(side="left", padx=(0, 10))
+        tk.Button(button_frame, text="Back to Login", command=self.create_login_screen, font=("Arial", 14), bg="#757575", fg="white", relief="flat", padx=20, pady=8).pack(side="left")
     
     def handle_login(self):
         username = self.login_username_entry.get().strip()
@@ -443,7 +448,7 @@ class SoulSenseApp:
         tk.Label(logout_frame, text=f"Logged in as: {self.username}", bg=self.colors["card_bg"], fg=self.colors["text_secondary"], font=("Arial", 10)).pack(side="left")
         tk.Button(logout_frame, text="Logout", command=self.handle_logout, font=("Arial", 10), bg=self.colors["danger"], fg="white", relief="flat", padx=15, pady=5).pack(side="right")
         
-        # View History Option (Merged from Upstream)
+        # View History Option
         tk.Button(logout_frame, text="History", command=self.show_history_screen, font=("Arial", 10), bg=self.colors["accent"], fg="white", relief="flat", padx=15, pady=5).pack(side="right", padx=5)
 
         tk.Label(card, text="Enter Name", bg=self.colors["card_bg"], fg=self.colors["text_input"], font=("Arial", 11, "bold")).pack(anchor="w", pady=(5, 2))
@@ -480,7 +485,7 @@ class SoulSenseApp:
         self.age = age
         self.age_group = compute_age_group(age)
 
-        # Loading Indicator (My Feature)
+        # Loading Indicator
         self.show_loading("Loading Questions...")
         
         try:
@@ -515,40 +520,82 @@ class SoulSenseApp:
         tk.Label(
             question_frame,
             text=f"Q{self.current_question + 1}: {q_text}",
-            wraplength=400,
-            font=("Arial", 12),
+            wraplength=450, # Increased
+            font=("Arial", 14), # Increased
             bg=self.colors["bg_primary"],
             fg=self.colors["text_primary"]
         ).pack(side="left")
         
         if q_tooltip:
-            tooltip_btn = tk.Label(question_frame, text="ℹ️", font=("Arial", 12), fg=self.colors["accent"], bg=self.colors["bg_primary"], cursor="hand2")
+            # Accessibility: Button not Label
+            tooltip_btn = tk.Button(
+                question_frame,
+                text="ℹ️",
+                font=("Arial", 14),
+                fg=self.colors["accent"],
+                bg=self.colors["bg_primary"],
+                activebackground=self.colors["bg_secondary"],
+                relief="flat",
+                cursor="hand2",
+                command=lambda: self.toggle_tooltip(q_tooltip, question_frame)
+            )
             tooltip_btn.pack(side="left", padx=5)
-            
-            def on_enter(e):
-                self.tooltip_w = tk.Toplevel(self.root)
-                self.tooltip_w.wm_overrideredirect(True)
-                x = e.widget.winfo_rootx() + 20
-                y = e.widget.winfo_rooty() + 20
-                self.tooltip_w.wm_geometry(f"+{x}+{y}")
-                tk.Label(self.tooltip_w, text=q_tooltip, bg=self.colors["tooltip_bg"], fg=self.colors["tooltip_fg"], relief="solid", borderwidth=1, padx=5, pady=3).pack()
-            
-            def on_leave(e):
-                if hasattr(self, 'tooltip_w'): self.tooltip_w.destroy()
-            
-            tooltip_btn.bind("<Enter>", on_enter)
-            tooltip_btn.bind("<Leave>", on_leave)
+            # Hover events
+            tooltip_btn.bind("<Enter>", lambda e: self.show_tooltip_popup(e, q_tooltip))
+            tooltip_btn.bind("<Leave>", lambda e: self.hide_tooltip_popup())
 
         self.answer_var = tk.IntVar()
         
         for val, txt in enumerate(["Never", "Sometimes", "Often", "Always"], 1):
-            tk.Radiobutton(self.root, text=f"{txt} ({val})", variable=self.answer_var, value=val, bg=self.colors["bg_primary"], fg=self.colors["text_primary"], selectcolor=self.colors["bg_secondary"]).pack(anchor="w", padx=100)
+             tk.Radiobutton(
+                self.root,
+                text=f"{txt} ({val})",
+                variable=self.answer_var,
+                value=val,
+                font=("Arial", 12), # Increased
+                bg=self.colors["bg_primary"],
+                fg=self.colors["text_primary"],
+                selectcolor=self.colors["bg_secondary"],
+                activebackground=self.colors["bg_primary"]
+            ).pack(anchor="w", padx=100, pady=5)
 
         # Nav Buttons
         btn_frame = tk.Frame(self.root, bg=self.colors["bg_primary"])
         btn_frame.pack(pady=15)
         
-        tk.Button(btn_frame, text="Next", command=self.save_answer, font=("Arial", 12), bg=self.colors["success"], fg="white").pack(side="left")
+        next_btn = tk.Button(btn_frame, text="Next", command=self.save_answer, font=("Arial", 12, "bold"), bg=self.colors["success"], fg="white", padx=20)
+        next_btn.pack(side="left")
+        
+        self.root.bind('<Return>', lambda e: self.save_answer())
+
+    # --- Tooltip Helpers ---
+    def show_tooltip_popup(self, event, text):
+        self.tooltip_w = tk.Toplevel(self.root)
+        self.tooltip_w.wm_overrideredirect(True)
+        x = event.widget.winfo_rootx() + 30
+        y = event.widget.winfo_rooty() + 30
+        self.tooltip_w.wm_geometry(f"+{x}+{y}")
+        tk.Label(self.tooltip_w, text=text, font=("Arial", 11), bg=self.colors["tooltip_bg"], fg=self.colors["tooltip_fg"], relief="solid", bd=1, padx=8, pady=5).pack()
+
+    def hide_tooltip_popup(self, event=None):
+        if hasattr(self, 'tooltip_w'):
+            self.tooltip_w.destroy()
+            del self.tooltip_w
+            
+    def toggle_tooltip(self, text, parent):
+        if hasattr(self, 'tooltip_w'):
+            self.hide_tooltip_popup()
+        else:
+            self.tooltip_w = tk.Toplevel(self.root)
+            self.tooltip_w.title("Help")
+            x = self.root.winfo_rootx() + 100
+            y = self.root.winfo_rooty() + 100
+            self.tooltip_w.geometry(f"+{x}+{y}")
+            tk.Label(self.tooltip_w, text=text, font=("Arial", 12), wraplength=280, padx=10, pady=10).pack(expand=True)
+            tk.Button(self.tooltip_w, text="Close", command=self.hide_tooltip_popup).pack(pady=10)
+            self.tooltip_w.transient(self.root)
+            self.tooltip_w.grab_set()
+            self.tooltip_w.focus_set()
 
     def save_answer(self):
         try:
@@ -560,11 +607,8 @@ class SoulSenseApp:
 
         self.responses.append(ans)
         
-        # Save response to DB (Using ORM)
         session = get_session()
         try:
-            # Note: We don't have question_id tracked easily in this list structure, just index + 1 for now
-            # In a real app we'd track real IDs
             response = Response(
                 username=self.username,
                 question_id=self.current_question + 1,
@@ -583,7 +627,6 @@ class SoulSenseApp:
         self.show_question()
 
     def finish_test(self):
-        # Loading Indicator (My Feature)
         self.show_loading("Analyzing Emotional Intelligence...")
         self.root.after(100, self._process_results)
 
@@ -635,7 +678,6 @@ class SoulSenseApp:
         canvas.pack()
         
         fill_width = (self.current_percentage / 100.0) * 400
-        # Color based on score
         color = self.colors["improvement_good"] if self.current_percentage >= 65 else self.colors["improvement_neutral"] if self.current_percentage >= 50 else self.colors["improvement_bad"]
         
         canvas.create_rectangle(0, 0, 400, 30, fill="#e0e0e0", outline="")
@@ -644,7 +686,6 @@ class SoulSenseApp:
         interpret = "Excellent" if self.current_percentage >= 80 else "Good" if self.current_percentage >= 65 else "Average" if self.current_percentage >= 50 else "Needs Work"
         tk.Label(main_frame, text=f"{interpret} ({self.current_percentage:.1f}%)", font=("Arial", 14), bg=self.colors["bg_primary"], fg=self.colors["text_primary"]).pack(pady=10)
         
-        # Buttons
         btn_frame = tk.Frame(main_frame, bg=self.colors["bg_primary"])
         btn_frame.pack(pady=20)
         
@@ -664,7 +705,6 @@ class SoulSenseApp:
         
         session = get_session()
         try:
-            # ORM Query: Get user's scores
             scores_data = session.query(Score).filter_by(username=self.username).order_by(Score.id.desc()).limit(10).all()
         finally:
             session.close()
@@ -673,7 +713,6 @@ class SoulSenseApp:
             tk.Label(self.root, text="No history found.", bg=self.colors["bg_primary"], fg=self.colors["text_primary"]).pack(pady=50)
             return
 
-        # List
         canvas = tk.Canvas(self.root, bg=self.colors["bg_primary"])
         scrollbar = tk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
         scroll_frame = tk.Frame(canvas, bg=self.colors["bg_primary"])
@@ -688,9 +727,6 @@ class SoulSenseApp:
         for s in scores_data:
             f = tk.Frame(scroll_frame, bg="white", pady=10, padx=10, relief="groove", bd=1)
             f.pack(fill="x", pady=5)
-            
-            # Since my Score model didn't have timestamp originally, handling potential absence
-            # Assuming id acts as proxy for time order
             tk.Label(f, text=f"Test ID: {s.id}", font=("Arial", 10, "bold")).pack(side="left")
             tk.Label(f, text=f"Score: {s.total_score}", font=("Arial", 10)).pack(side="right", padx=20)
 
