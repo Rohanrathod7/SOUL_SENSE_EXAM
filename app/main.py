@@ -99,6 +99,30 @@ class SplashScreen:
 
 # ---------------- GUI ----------------
 class SoulSenseApp:
+    def return_to_home(self):
+        confirm = messagebox.askyesno(
+            "Return to Home",
+            "Are you sure you want to return to the home screen?\nYour current progress will be lost."
+        )
+
+        if not confirm:
+            return
+
+    # ---- RESET TEST STATE ----
+        self.current_question = 0
+        self.responses = {} if isinstance(self.responses, dict) else []
+        self.answer_var = None
+
+        # Optional: reset user-related session data
+        # (keep username if you want prefilled name)
+        self.age = None
+        self.age_group = None
+
+        logging.info("User returned to home screen during test")
+
+        # ---- GO TO HOME ----
+        self.create_username_screen()
+
     def __init__(self, root):
         self.root = root
         self.root.title("Soul Sense EQ Test")
@@ -288,7 +312,14 @@ class SoulSenseApp:
         
         # --- NEW: Progress Bar ---
         progress_frame = tk.Frame(self.root)
-        progress_frame.pack(pady=5)
+        progress_frame.pack(fill="x", pady=5, padx=10)
+
+        tk.Button(
+            progress_frame,
+            text="🏠 Home",
+            command=self.return_to_home
+        ).pack(side="right")
+
 
         max_val = self.total_questions if self.total_questions > 0 else 10
 
