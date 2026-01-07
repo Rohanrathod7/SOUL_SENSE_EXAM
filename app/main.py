@@ -537,12 +537,11 @@ class SoulSenseApp:
                 activebackground=self.colors["bg_secondary"],
                 relief="flat",
                 cursor="hand2",
-                command=lambda: self.toggle_tooltip(q_tooltip, question_frame)
+                command=lambda: self.toggle_tooltip(q_tooltip, question_frame),
+                highlightthickness=2, # focus highlight
+                highlightcolor=self.colors["accent"]
             )
-            tooltip_btn.pack(side="left", padx=5)
-            # Hover events
-            tooltip_btn.bind("<Enter>", lambda e: self.show_tooltip_popup(e, q_tooltip))
-            tooltip_btn.bind("<Leave>", lambda e: self.hide_tooltip_popup())
+            # ... (bindings)
 
         self.answer_var = tk.IntVar()
         
@@ -552,18 +551,30 @@ class SoulSenseApp:
                 text=f"{txt} ({val})",
                 variable=self.answer_var,
                 value=val,
-                font=("Arial", 12), # Increased
+                font=("Arial", 14), # Increased from 12 to 14
                 bg=self.colors["bg_primary"],
                 fg=self.colors["text_primary"],
                 selectcolor=self.colors["bg_secondary"],
-                activebackground=self.colors["bg_primary"]
-            ).pack(anchor="w", padx=100, pady=5)
+                activebackground=self.colors["bg_primary"],
+                highlightthickness=2, # focus highlight
+                highlightcolor=self.colors["accent"]
+            ).pack(anchor="w", padx=100, pady=10) # Increased padding
 
         # Nav Buttons
         btn_frame = tk.Frame(self.root, bg=self.colors["bg_primary"])
         btn_frame.pack(pady=15)
         
-        next_btn = tk.Button(btn_frame, text="Next", command=self.save_answer, font=("Arial", 12, "bold"), bg=self.colors["success"], fg="white", padx=20)
+        next_btn = tk.Button(
+            btn_frame, 
+            text="Next", 
+            command=self.save_answer, 
+            font=("Arial", 12, "bold"), 
+            bg=self.colors["success"], 
+            fg="white", 
+            padx=20,
+            highlightthickness=2, # focus highlight
+            highlightcolor=self.colors["accent"]
+        )
         next_btn.pack(side="left")
         
         self.root.bind('<Return>', lambda e: self.save_answer())
