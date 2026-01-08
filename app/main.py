@@ -14,6 +14,7 @@ from app.logger import setup_logging
 
 from app.questions import load_questions
 from app.utils import compute_age_group
+from ml_predictor import SoulSenseMLPredictor
 
 # ---------------- LOGGING SETUP ----------------
 setup_logging()
@@ -170,6 +171,14 @@ class SoulSenseApp:
         self.root.title("Soul Sense EQ Test")
         self.root.geometry("650x550")  # Increased size for benchmarking
         
+        # Initialize ML Predictor
+        try:
+            self.ml_predictor = SoulSenseMLPredictor()
+            logging.info("ML Predictor initialized successfully")
+        except Exception as e:
+            logging.error(f"Failed to initialize ML Predictor: {e}")
+            self.ml_predictor = None
+
         # Load settings
         self.settings = load_settings()
         
@@ -1342,6 +1351,19 @@ class SoulSenseApp:
             width=15
         ).pack(side="left", padx=10)
         
+        # AI Analysis Button
+        if self.ml_predictor:
+            self.create_widget(
+                tk.Button,
+                button_frame,
+                text="🤖 AI Analysis",
+                command=self.show_ml_analysis,
+                font=("Arial", 12, "bold"),
+                bg="#E3F2FD", # Light Blue
+                fg="#1565C0", # Dark Blue text
+                width=15
+            ).pack(side="left", padx=10)
+        
         self.create_widget(
             tk.Button,
             button_frame,
@@ -1363,6 +1385,80 @@ class SoulSenseApp:
         # Pack canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+    def show_ml_analysis(self):
+        """Show AI-powered analysis in a popup window"""
+        if not self.ml_predictor:
+            messagebox.showerror("Error", "AI Model not loaded.")
+            return
+            
+        try:
+            # 1. Get Prediction
+            result = self.ml_predictor.predict_with_explanation(
+                self.responses, 
+                self.age, 
+                self.current_score
+            )
+            
+            # 2. Create Popup
+            popup = tk.Toplevel(self.root)
+            popup.title("🤖 SoulSense AI Analysis")
+            popup.geometry("600x700")
+            popup.configure(bg="white")
+            
+            # 3. Header
+            tk.Label(
+                popup, 
+                text=f"{result['prediction_label']}", 
+                font=("Arial", 24, "bold"),
+                bg="white",
+                fg="#D32F2F" if result['prediction'] == 2 else 
+                   "#FBC02D" if result['prediction'] == 1 else "#388E3C"
+            ).pack(pady=20)
+            
+            tk.Label(
+                popup,
+                text=f"Confidence: {result['confidence']:.1%}",
+                font=("Arial", 12),
+                bg="white",
+                fg="#666"
+            ).pack()
+            
+            # 4. Scrollable Explanation Text
+            text_frame = tk.Frame(popup, bg="white")
+            text_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            scrollbar = tk.Scrollbar(text_frame)
+            scrollbar.pack(side="right", fill="y")
+            
+            text_widget = tk.Text(
+                text_frame, 
+                wrap="word", 
+                font=("Courier New", 11),
+                yscrollcommand=scrollbar.set,
+                bd=0,
+                padx=10,
+                pady=10
+            )
+            text_widget.pack(side="left", fill="both", expand=True)
+            scrollbar.config(command=text_widget.yview)
+            
+            # Insert explanation
+            text_widget.insert("1.0", result['explanation'])
+            text_widget.config(state="disabled") # Read-only
+            
+            # 5. Close Button
+            tk.Button(
+                popup,
+                text="Close",
+                command=popup.destroy,
+                font=("Arial", 11),
+                width=20
+            ).pack(pady=20)
+            
+        except Exception as e:
+            logging.error("AI Analysis failed", exc_info=True)
+            messagebox.showerror("Analysis Error", f"Could not generate AI report.\n{e}")
 
     def show_history_screen(self):
         """Show history of all tests for the current user"""
