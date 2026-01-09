@@ -1,12 +1,46 @@
 # 🧠 Soul Sense EQ Test
 
 Soul Sense EQ Test is a desktop-based Emotional Intelligence (EQ) assessment application built using Python, Tkinter, and SQLite.
-It provides an interactive self-reflection test, persists results locally, and is designed with maintainability, testability, and extensibility in mind.
+It provides a✅ Tip: If you see `ModuleNotFoundError`, it usually means your virtual environment is **not active** or the package isn't installed inside it.
+
+---
+
+## 🌍 Multi-language Support
+
+SoulSense now supports multiple languages with easy switching!
+
+### Supported Languages
+- **English** (default)
+- **हिंदी (Hindi)**
+- **Español (Spanish)**
+
+### Quick Start
+1. Launch the application
+2. Select your language from the dropdown at the top of the main screen
+3. All UI elements update instantly
+4. Your preference is saved automatically
+
+### For Contributors
+Want to add your language? See our [I18N Guide](I18N_GUIDE.md) for:
+- Step-by-step instructions
+- Translation template
+- Testing guidelines
+
+---
+
+## ▶️ How to Runeractive self-reflection test, persists results locally, and is designed with maintainability, testability, and extensibility in mind.
+
+**🌍 Now available in multiple languages: English, Hindi (हिंदी), and Spanish (Español)!**
 
 ---
 
 ## ✨ Features
 
+- **🌐 Multi-language Support (NEW!)**
+  - English, Hindi, and Spanish translations
+  - Easy language switching from the UI
+  - Persistent language preferences
+  - Simple framework for adding more languages
 - **User Authentication System**
   - Secure user registration and login
   - Password hashing with SHA-256
