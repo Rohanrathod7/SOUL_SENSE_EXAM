@@ -14,6 +14,17 @@ from app.logger import setup_logging
 
 from app.questions import load_questions
 from app.utils import compute_age_group
+import tkinter.simpledialog as simpledialog
+# Try importing JournalFeature from root (since we run as module from root)
+try:
+    from journal_feature import JournalFeature
+except ImportError:
+    # Fallback if python path issues, though python -m app.main should work
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from journal_feature import JournalFeature
+
 from ml_predictor import SoulSenseMLPredictor
 
 # ---------------- LOGGING SETUP ----------------
@@ -173,12 +184,18 @@ class SoulSenseApp:
         self.root.geometry("650x550")  # Increased size for benchmarking
         
         # Initialize ML Predictor
+
         try:
             self.ml_predictor = SoulSenseMLPredictor()
             logging.info("ML Predictor initialized successfully")
         except Exception as e:
             logging.error(f"Failed to initialize ML Predictor: {e}")
             self.ml_predictor = None
+
+        # Initialize Journal Feature
+        self.journal_feature = JournalFeature(self.root)
+
+
 
         # Load settings
         self.settings = load_settings()
@@ -407,6 +424,19 @@ class SoulSenseApp:
         )
         start_btn.pack(pady=5)
         
+        # Journal Button
+        journal_btn = self.create_widget(
+            tk.Button,
+            button_frame,
+            text="📖 Daily Journal",
+            command=self.open_journal_flow,
+            font=("Arial", 12),
+            width=15,
+            bg="#FFB74D", # Orange accent
+            fg="black"
+        )
+        journal_btn.pack(pady=5)
+        
         # View History button
         history_btn = self.create_widget(
             tk.Button,
@@ -437,6 +467,17 @@ class SoulSenseApp:
             width=15
         )
         exit_btn.pack(pady=5)
+
+    def open_journal_flow(self):
+        """Handle journal access, prompting for name if needed"""
+        if not self.username:
+            name = simpledialog.askstring("Journal Access", "Please enter your name to access your journal:", parent=self.root)
+            if name and name.strip():
+                self.username = name.strip()
+            else:
+                return
+        
+        self.journal_feature.open_journal_window(self.username)
 
     def run_bias_check(self):
         """Quick bias check after test completion"""
