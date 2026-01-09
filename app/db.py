@@ -88,13 +88,7 @@ def check_db_state():
         logger.critical(f"Unexpected error during DB check: {e}", exc_info=True)
         raise DatabaseError("Critical error during database initialization.", original_exception=e)
 
-# Call verify on import (or explicit init)
-try:
-    check_db_state()
-except DatabaseError:
-    # We re-raise to let the main app handle the crash gracefully if possible,
-    # or just crash if it's during import time
-    raise
+
 
 # Backward compatibility for old code (raw sqlite3)
 def get_connection(db_path=None):

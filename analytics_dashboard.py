@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 from collections import Counter
+import matplotlib
+matplotlib.use("Agg") # Prevent GUI mainloop conflicts
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -9,7 +11,8 @@ import matplotlib.dates as mdates
 import json
 import os
 import sqlite3
-from app.models import get_session, Score, JournalEntry
+from app.models import Score, JournalEntry
+from app.db import get_session
 
 class AnalyticsDashboard:
     def __init__(self, parent_root, username):

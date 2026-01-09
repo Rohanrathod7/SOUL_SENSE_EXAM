@@ -38,6 +38,7 @@ class SoulSenseMLPredictor:
             'average_score'
         ]
         self.class_names = ['Low Risk', 'Moderate Risk', 'High Risk']
+        self.cleaner = DataCleaner()  # Initialize data cleaner
         self.use_versioning = use_versioning
         self.versioning_manager = None
         self.current_version = None
@@ -45,6 +46,7 @@ class SoulSenseMLPredictor:
         
         if use_versioning:
             self.versioning_manager = create_versioning_manager()
+
         
         # Try to load existing model, otherwise train new one
         try:
@@ -56,7 +58,7 @@ class SoulSenseMLPredictor:
             self.train_sample_model()
             self.save_model()
     
-    def prepare_features(self, q_scores, age, total_score):
+    def prepare_features(self, q_scores, age, total_score, sentiment_score=0.0):
         """Prepare features for ML prediction"""
         q_scores = np.array(q_scores)
         
@@ -68,10 +70,11 @@ class SoulSenseMLPredictor:
             'social_awareness': q_scores[4] if len(q_scores) > 4 else 3,
             'total_score': total_score,
             'age': age,
-            'average_score': total_score / max(len(q_scores), 1)
+            'average_score': total_score / max(len(q_scores), 1),
+            'sentiment_score': sentiment_score # Passed for explanation, not model
         }
         
-        # Convert to numpy array in correct order
+        # Convert to numpy array in correct order (EXCLUDING sentiment_score for model compatibility)
         feature_array = np.array([features[name] for name in self.feature_names])
         
         return feature_array.reshape(1, -1), features
@@ -221,13 +224,23 @@ class SoulSenseMLPredictor:
         plt.close()
         print("📉 Confusion matrix saved to confusion_matrix.png")
     
-    def predict_with_explanation(self, q_scores, age, total_score):
-        """Make prediction with XAI explanations"""
-        # Clean inputs first
-        q_scores, age, total_score = DataCleaner.clean_inputs(q_scores, age, total_score)
+    def predict_with_explanation(self, user_features, sentiment_score=0.0):
+        """
+        Predict EQ score and provide explanation based on feature importance and sentiment.
+        """
+        # Clean inputs - extract values from dict
+        q_scores = user_features.get('q_scores', [])
+        age = user_features.get('age', 25)
+        total_score = user_features.get('total_score', 0)
+        
+        cleaned_q_scores, cleaned_age, cleaned_total = self.cleaner.clean_inputs(
+            q_scores, age, total_score
+        )
         
         # Prepare features
-        X_scaled, feature_dict = self.prepare_features(q_scores, age, total_score)
+        X_scaled, feature_dict = self.prepare_features(
+            cleaned_q_scores, cleaned_age, cleaned_total, sentiment_score
+        )
         
         # Scale features
         X_scaled = self.scaler.transform(X_scaled)
@@ -259,42 +272,64 @@ class SoulSenseMLPredictor:
         }
     
     def get_recommendations(self, prediction, features):
-        """Generate actionable advice based on specific feature deficits"""
+        """Generate actionable advice based on specific feature deficits and sentiment"""
         advice = []
+        
+        # Get sentiment score if available
+        sentiment = features.get('sentiment_score', 0)
+        
+        # Sentiment-Based Recommendations (Priority)
+        if sentiment < -60:
+            advice.append("🆘 Your reflection shows significant distress. Please consider speaking with a mental health professional.")
+            advice.append("📝 Use the Daily Journal feature to express and process your emotions.")
+            advice.append("🤝 Reach out to a trusted friend or family member today.")
+        elif sentiment < -20:
+            advice.append("💭 Your reflection indicates some negative emotions. Practice self-compassion.")
+            advice.append("📖 Try journaling daily to track emotional patterns and triggers.")
+            advice.append("🧘 Consider mindfulness or meditation to manage stress.")
+        elif sentiment > 60:
+            advice.append("🌟 Your positive outlook is a strength! Continue nurturing it.")
+            advice.append("🎯 Consider mentoring others who might benefit from your emotional resilience.")
+            advice.append("📈 Set new personal growth goals to maintain momentum.")
+        elif sentiment > 20:
+            advice.append("✨ Your reflection shows positive feelings. Build on this foundation!")
+            advice.append("💪 Continue practicing the emotional skills that are working well.")
         
         # General Advice based on Risk Level
         if prediction == 2: # High Risk
-            advice.append("Consider consulting a mental health professional for personalized support.")
-            advice.append("Reach out to a trusted friend or family member to share your feelings.")
+            if sentiment >= 0:  # Positive sentiment despite low EQ
+                advice.append("💡 While you're feeling positive, focus on developing specific EQ skills for long-term growth.")
+            else:
+                advice.append("🏥 Consider consulting a mental health professional for personalized support.")
         elif prediction == 1: # Moderate Risk
-            advice.append("Try setting aside 10 minutes daily for mindfulness or meditation.")
-            advice.append("Focus on maintaining a regular sleep schedule.")
+            advice.append("⏰ Try setting aside 10 minutes daily for mindfulness or meditation.")
+            advice.append("😴 Focus on maintaining a regular sleep schedule.")
 
         # Specific Advice based on Low Scores
         # Emotional Regulation (Q3)
         if features.get('emotional_regulation', 5) <= 2:
-            advice.append("Practice 'Box Breathing': Inhale 4s, Hold 4s, Exhale 4s, Hold 4s.")
-            advice.append("Identify your triggers: Write down what situations cause strong reactions.")
+            advice.append("🫁 Practice 'Box Breathing': Inhale 4s, Hold 4s, Exhale 4s, Hold 4s.")
+            advice.append("📋 Identify your triggers: Write down what situations cause strong reactions.")
             
         # Social Awareness (Q5)
         if features.get('social_awareness', 5) <= 2:
-            advice.append("Active Listening: Focus entirely on the speaker without planning your response.")
-            advice.append("Observe Body Language: Notice non-verbal cues in your next conversation.")
+            advice.append("👂 Active Listening: Focus entirely on the speaker without planning your response.")
+            advice.append("👁️ Observe Body Language: Notice non-verbal cues in your next conversation.")
             
         # Emotional Understanding (Q2)
         if features.get('emotional_understanding', 5) <= 2:
-            advice.append("Emotion Labeling: paused to specifically name what you are feeling (e.g., 'Frustrated').")
+            advice.append("🏷️ Emotion Labeling: Pause to specifically name what you are feeling (e.g., 'Frustrated').")
             
         # Emotional Recognition (Q1)
         if features.get('emotional_recognition', 5) <= 2:
-            advice.append("Body Scan: Close your eyes and notice where you feel tension in your body.")
+            advice.append("🧘 Body Scan: Close your eyes and notice where you feel tension in your body.")
 
         # Fallback
         if not advice:
-            advice.append("Continue engaging in hobbies that bring you joy.")
-            advice.append("Maintain your current healthy emotional habits!")
+            advice.append("🎉 Continue engaging in hobbies that bring you joy.")
+            advice.append("✅ Maintain your current healthy emotional habits!")
             
-        return advice[:5] # Limit to top 5 tips
+        return advice[:6] # Limit to top 6 tips
     
     def get_feature_importance(self, features):
         """Get feature importance for this specific prediction"""
@@ -396,9 +431,18 @@ class SoulSenseMLPredictor:
         📊 **Confidence:** {probabilities[prediction]:.1%}
         
         **Assessment:** {risk_info['description']}
-        
-        🔍 **TOP INFLUENCING FACTORS:**
+
+        📝 **SENTIMENT ANALYSIS:**
+        Sentiment Score: {features.get('sentiment_score', 0):.1f}
         """
+        
+        sentiment = features.get('sentiment_score', 0)
+        if sentiment < -20:
+             explanation_report += "\n        • Your reflection indicates some distress or negative emotion."
+        elif sentiment > 20:
+             explanation_report += "\n        • Your reflection shows a positive or hopeful outlook."
+        
+        explanation_report += "\n\n        🔍 **TOP INFLUENCING FACTORS:**\n        """
         
         for i, feat in enumerate(feature_explanations, 1):
             explanation_report += f"""

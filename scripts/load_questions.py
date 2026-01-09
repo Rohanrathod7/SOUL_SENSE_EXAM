@@ -1,7 +1,8 @@
 import os
 from datetime import datetime
 from app.db import get_connection
-from app.models import ensure_question_bank_schema
+from app.models import Question
+from app.db import get_session
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 TXT_PATH = os.path.join(BASE_DIR, "data", "question_bank.txt")

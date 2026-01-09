@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, Index, func, event
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, Index, func, event, text
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 import logging
@@ -30,6 +30,8 @@ class Score(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, index=True)  # Added index
     total_score = Column(Integer, index=True)  # Added index
+    sentiment_score = Column(Float, default=0.0)  # New: NLTK Sentiment Score
+    reflection_text = Column(Text, nullable=True) # New: Open-ended response
     age = Column(Integer, index=True)  # Added index
     detailed_age_group = Column(String, index=True)  # Added index
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)  # Added index
@@ -143,13 +145,14 @@ def receive_before_create(target, connection, **kw):
     logger.info("Optimizing database settings...")
     
     # SQLite specific optimizations
+    # SQLite specific optimizations
     if connection.engine.name == 'sqlite':
-        connection.execute('PRAGMA journal_mode = WAL')  # Write-Ahead Logging for better concurrency
-        connection.execute('PRAGMA synchronous = NORMAL')  # Good balance of safety and performance
-        connection.execute('PRAGMA cache_size = -2000')  # 2MB cache
-        connection.execute('PRAGMA temp_store = MEMORY')  # Store temp tables in memory
-        connection.execute('PRAGMA mmap_size = 268435456')  # 256MB memory map
-        connection.execute('PRAGMA foreign_keys = ON')  # Enable foreign key constraints
+        connection.execute(text('PRAGMA journal_mode = WAL'))  # Write-Ahead Logging for better concurrency
+        connection.execute(text('PRAGMA synchronous = NORMAL'))  # Good balance of safety and performance
+        connection.execute(text('PRAGMA cache_size = -2000'))  # 2MB cache
+        connection.execute(text('PRAGMA temp_store = MEMORY'))  # Store temp tables in memory
+        connection.execute(text('PRAGMA mmap_size = 268435456'))  # 256MB memory map
+        connection.execute(text('PRAGMA foreign_keys = ON'))  # Enable foreign key constraints
 
 @event.listens_for(Question.__table__, 'after_create')
 def receive_after_create_question(target, connection, **kw):
@@ -168,24 +171,25 @@ def receive_after_create_question(target, connection, **kw):
         """)
         
         # Create triggers to keep the search index updated
-        connection.execute("""
+        # Create triggers to keep the search index updated
+        connection.execute(text("""
             CREATE TRIGGER IF NOT EXISTS question_ai AFTER INSERT ON question_bank BEGIN
                 INSERT INTO question_search(rowid, question_text) VALUES (new.id, new.question_text);
             END;
-        """)
+        """))
         
-        connection.execute("""
+        connection.execute(text("""
             CREATE TRIGGER IF NOT EXISTS question_ad AFTER DELETE ON question_bank BEGIN
                 INSERT INTO question_search(question_search, rowid, question_text) VALUES('delete', old.id, old.question_text);
             END;
-        """)
+        """))
         
-        connection.execute("""
+        connection.execute(text("""
             CREATE TRIGGER IF NOT EXISTS question_au AFTER UPDATE ON question_bank BEGIN
                 INSERT INTO question_search(question_search, rowid, question_text) VALUES('delete', old.id, old.question_text);
                 INSERT INTO question_search(rowid, question_text) VALUES (new.id, new.question_text);
             END;
-        """)
+        """))
         
         logger.info("Full-text search indexes created for questions")
     except:
@@ -203,6 +207,9 @@ class QuestionCache(Base):
     category_id = Column(Integer, index=True)
     difficulty = Column(Integer, index=True)
     is_active = Column(Integer, default=1, index=True)
+    min_age = Column(Integer, default=0)
+    max_age = Column(Integer, default=120)
+    tooltip = Column(Text, nullable=True)
     cached_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     access_count = Column(Integer, default=0, index=True)
     
@@ -232,24 +239,25 @@ class StatisticsCache(Base):
 def create_performance_indexes(engine):
     """Create additional performance indexes that might be needed"""
     with engine.connect() as conn:
+        conn.commit() # Ensure we are in a transaction context if needed, or autocommit
         # Create indexes that might not be in the model definitions
-        conn.execute("""
+        conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_responses_composite 
             ON responses(username, question_id, response_value, timestamp)
-        """)
+        """))
         
-        conn.execute("""
+        conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_scores_composite 
             ON scores(username, total_score, age, timestamp)
-        """)
+        """))
         
-        conn.execute("""
+        conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_questions_quick_load 
             ON question_bank(is_active, id, question_text)
-        """)
+        """))
         
         # Optimize the database
-        conn.execute('PRAGMA optimize')
+        conn.execute(text('PRAGMA optimize'))
         
         logger.info("Performance indexes created and database optimized")
 

@@ -7,10 +7,19 @@ from analytics_dashboard import AnalyticsDashboard
 from app.db import get_session
 from app.models import JournalEntry
 import logging
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
 
 class JournalFeature:
     def __init__(self, parent_root):
         self.parent_root = parent_root
+        # Initialize VADER lexicon
+        try:
+            nltk.data.find('sentiment/vader_lexicon.zip')
+        except LookupError:
+            nltk.download('vader_lexicon', quiet=True)
+        self.sia = SentimentIntensityAnalyzer()
+        
         # Database setup is handled efficiently by app.db.check_db_state or migration
         
     def open_journal_window(self, username):
@@ -59,22 +68,15 @@ class JournalFeature:
                  font=("Arial", 12)).pack(side=tk.LEFT, padx=5)
     
     def analyze_sentiment(self, text):
-        """Simple sentiment analysis based on emotional keywords"""
-        positive_words = ['happy', 'joy', 'excited', 'grateful', 'peaceful', 'confident', 
-                         'proud', 'hopeful', 'content', 'satisfied', 'calm', 'relaxed']
-        negative_words = ['sad', 'angry', 'frustrated', 'anxious', 'worried', 'stressed', 
-                         'disappointed', 'upset', 'overwhelmed', 'depressed', 'fear', 'lonely']
-        
-        text_lower = text.lower()
-        positive_count = sum(1 for word in positive_words if word in text_lower)
-        negative_count = sum(1 for word in negative_words if word in text_lower)
-        
-        total_words = len(text.split())
-        if total_words == 0:
+        """Advanced sentiment analysis using NLTK VADER"""
+        if not text or not text.strip():
             return 0.0
             
-        sentiment_score = (positive_count - negative_count) / max(total_words, 1) * 100
-        return max(-100, min(100, sentiment_score))
+        # Get sentiment scores (compound is -1.0 to 1.0)
+        scores = self.sia.polarity_scores(text)
+        
+        # Scale to -100 to 100
+        return scores['compound'] * 100
     
     def extract_emotional_patterns(self, text):
         """Extract emotional patterns from text"""

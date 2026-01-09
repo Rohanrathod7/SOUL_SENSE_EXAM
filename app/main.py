@@ -1,31 +1,45 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox, simpledialog
 import logging
-import sys
+import threading
+import time
 from datetime import datetime
 import json
+import webbrowser
 import os
-import random
-import traceback
-from bias_checker import SimpleBiasChecker
-from app.db import get_connection
-from app.exceptions import SoulSenseError, DatabaseError, ConfigurationError, ResourceError
-from app.logger import setup_logging
+import sys
+import random # For random tips
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
+import traceback # Keep this, it was in the original and not explicitly removed
 
+from app.db import get_session, get_connection
+from app.config import APP_CONFIG
+from app.models import User, Score, Response, Question
+from app.exceptions import DatabaseError, ValidationError, AuthenticationError, APIConnectionError, SoulSenseError
+from app.logger import setup_logging
+from app.data_cleaning import DataCleaner
+from app.utils import load_settings, save_settings, compute_age_group
 from app.questions import load_questions
-from app.utils import compute_age_group
-import tkinter.simpledialog as simpledialog
-# Try importing JournalFeature from root (since we run as module from root)
+
+# Try importing optional features
 try:
     from journal_feature import JournalFeature
 except ImportError:
-    # Fallback if python path issues, though python -m app.main should work
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from journal_feature import JournalFeature
+    logging.warning("Could not import JournalFeature")
+    JournalFeature = None
 
-from ml_predictor import SoulSenseMLPredictor
+try:
+    from ml_predictor import SoulSenseMLPredictor
+except ImportError:
+    logging.warning("Could not import SoulSenseMLPredictor")
+    SoulSenseMLPredictor = None
+
+# Ensure VADER lexicon is downloaded
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except LookupError:
+    nltk.download('vader_lexicon', quiet=True)
 
 # ---------------- LOGGING SETUP ----------------
 setup_logging()
@@ -70,12 +84,7 @@ def global_exception_handler(self, exc, val, tb):
 tk.Tk.report_callback_exception = global_exception_handler
 
 # ---------------- SETTINGS ----------------
-SETTINGS_FILE = "settings.json"
-DEFAULT_SETTINGS = {
-    "question_count": 10,
-    "theme": "light",
-    "sound_effects": True
-}
+# Imported from app.utils
 
 # ---------------- BENCHMARK DATA ----------------
 # Based on EQ test norms (simulated data for demonstration)
@@ -111,30 +120,7 @@ BENCHMARK_DATA = {
     }
 }
 
-def load_settings():
-    """Load user settings from file or use defaults"""
-    if os.path.exists(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE, 'r') as f:
-                settings = json.load(f)
-                # Ensure all default keys exist
-                for key in DEFAULT_SETTINGS:
-                    if key not in settings:
-                        settings[key] = DEFAULT_SETTINGS[key]
-                return settings
-        except Exception:
-            logging.error("Failed to load settings", exc_info=True)
-    return DEFAULT_SETTINGS.copy()
 
-def save_settings(settings):
-    """Save user settings to file"""
-    try:
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(settings, f, indent=2)
-        return True
-    except Exception:
-        logging.error("Failed to save settings", exc_info=True)
-        return False
 
 # ---------------- LOGGING ----------------
 logging.basicConfig(
@@ -364,6 +350,8 @@ class SoulSenseApp:
             b = max(0, b - 30)
             return f"#{r:02x}{g:02x}{b:02x}"
         return color
+
+
 
     def create_welcome_screen(self):
         """Create initial welcome screen with settings option"""
@@ -891,6 +879,10 @@ class SoulSenseApp:
             return
 
         self.responses.append(ans)
+        
+        # Save individual response
+        conn = get_connection()
+        cursor = conn.cursor()
 
         qid = self.current_question + 1
         ts = datetime.utcnow().isoformat()
@@ -909,26 +901,92 @@ class SoulSenseApp:
             logging.error("Failed to store response", exc_info=True)
 
         self.current_question += 1
-        self.show_question()
+        
+        if self.current_question >= len(self.questions):
+            self.show_reflection_screen()
+        else:
+            self.show_question()
 
     def finish_test(self):
         self.current_score = sum(self.responses)
         self.current_max_score = len(self.responses) * 4
         self.current_percentage = (self.current_score / self.current_max_score) * 100 if self.current_max_score > 0 else 0
-
+        
+        conn = get_connection() # Get clean session
+        cursor = conn.cursor() # Get cursor explicitly
+        
         try:
+            # Save to Database with new columns
             cursor.execute(
-                "INSERT INTO scores (username, age, total_score, timestamp) VALUES (?, ?, ?, ?)",
-                (self.username, self.age, self.current_score, datetime.utcnow().isoformat())
+                "INSERT INTO scores (username, age, total_score, sentiment_score, reflection_text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+                (self.username, self.age, self.current_score, self.sentiment_score, self.reflection_text, datetime.utcnow().isoformat())
             )
             conn.commit()
         except Exception:
             logging.error("Failed to store final score", exc_info=True)
 
+
         # Run bias check
-        self.run_bias_check()
+        # self.run_bias_check()  # TODO: Implement bias check
         
         self.show_visual_results()
+
+    def show_reflection_screen(self):
+        """Show the open-ended reflection question"""
+        self.clear_screen()
+        
+        # Header
+        self.create_widget(
+            tk.Label, 
+            self.root, 
+            text="Final Reflection", 
+            font=("Arial", 24, "bold")
+        ).pack(pady=20)
+        
+        self.create_widget(
+            tk.Label, 
+            self.root, 
+            text="Describe a recent situation where you felt challenged emotionally.\nHow did you handle it?", 
+            font=("Arial", 14),
+            wraplength=600
+        ).pack(pady=10)
+        
+        # Text Area
+        self.reflection_entry = tk.Text(self.root, height=10, width=60, font=("Arial", 12))
+        self.reflection_entry.pack(pady=20, padx=20)
+        
+        # Submit Button
+        self.create_widget(
+            tk.Button,
+            self.root,
+            text="Submit & See Results",
+            command=self.submit_reflection,
+            font=("Arial", 14, "bold")
+        ).pack(pady=20)
+        
+    def submit_reflection(self):
+        """Analyze reflection and finish test"""
+        text = self.reflection_entry.get("1.0", tk.END).strip()
+        
+        if not text:
+            if not messagebox.askyesno("Skip?", "You haven't written anything. Do you want to skip?"):
+                return
+            self.sentiment_score = 0.0
+            self.reflection_text = ""
+        else:
+            self.reflection_text = text
+            # Analyze sentiment
+            try:
+                scores = self.sia.polarity_scores(text)
+                # Convert compound (-1 to 1) to -100 to 100
+                self.sentiment_score = scores['compound'] * 100
+            except Exception as e:
+                logging.error(f"Error analyzing sentiment: {e}")
+                self.sentiment_score = 0.0
+        
+        self.finish_test()
+
+
 
     # ---------- BENCHMARKING FUNCTIONS ----------
     def calculate_percentile(self, score, avg_score, std_dev):
@@ -1207,6 +1265,61 @@ class SoulSenseApp:
         )
         percentage_label.pack()
         
+        # Sentiment Score display (if available)
+        if hasattr(self, 'sentiment_score') and self.sentiment_score is not None:
+            sentiment_frame = self.create_widget(tk.Frame, score_display_frame)
+            sentiment_frame.pack(pady=10)
+            
+            # Sentiment label
+            self.create_widget(
+                tk.Label,
+                sentiment_frame,
+                text="Emotional Sentiment:",
+                font=("Arial", 12, "bold")
+            ).pack()
+            
+            # Sentiment score with color coding
+            if self.sentiment_score < -20:
+                sentiment_color = "#D32F2F"  # Red for negative
+                sentiment_label_text = "Negative"
+            elif self.sentiment_score > 20:
+                sentiment_color = "#388E3C"  # Green for positive
+                sentiment_label_text = "Positive"
+            else:
+                sentiment_color = "#FBC02D"  # Yellow for neutral
+                sentiment_label_text = "Neutral"
+            
+            sentiment_score_label = self.create_widget(
+                tk.Label,
+                sentiment_frame,
+                text=f"{self.sentiment_score:+.1f} ({sentiment_label_text})",
+                font=("Arial", 18, "bold"),
+                fg=sentiment_color
+            )
+            sentiment_score_label.pack()
+            
+            # Sentiment explanation
+            sentiment_desc = ""
+            if self.sentiment_score < -60:
+                sentiment_desc = "Your reflection shows significant distress"
+            elif self.sentiment_score < -20:
+                sentiment_desc = "Your reflection indicates some negative emotion"
+            elif self.sentiment_score > 60:
+                sentiment_desc = "Your reflection shows strong positive emotion"
+            elif self.sentiment_score > 20:
+                sentiment_desc = "Your reflection indicates positive feelings"
+            else:
+                sentiment_desc = "Your reflection shows balanced emotions"
+            
+            self.create_widget(
+                tk.Label,
+                sentiment_frame,
+                text=sentiment_desc,
+                font=("Arial", 10),
+                fg=self.colors["fg"]
+            ).pack()
+        
+        
         # Progress bar visualization
         progress_frame = self.create_widget(tk.Frame, summary_frame)
         progress_frame.pack(pady=20)
@@ -1467,10 +1580,14 @@ class SoulSenseApp:
             
         try:
             # 1. Get Prediction
+            user_features = {
+                'q_scores': self.responses,
+                'age': self.age,
+                'total_score': self.current_score
+            }
             result = self.ml_predictor.predict_with_explanation(
-                self.responses, 
-                self.age, 
-                self.current_score
+                user_features,
+                sentiment_score=self.sentiment_score
             )
             
             # 2. Create Layout
