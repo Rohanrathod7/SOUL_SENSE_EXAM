@@ -5,6 +5,10 @@ from datetime import datetime
 import random
 from app.db import get_connection
 from app.constants import BENCHMARK_DATA
+try:
+    from app.pdf_generator import generate_pdf_report
+except ImportError:
+    generate_pdf_report = None
 
 class ResultsManager:
     def __init__(self, app):
@@ -225,6 +229,35 @@ class ResultsManager:
         tk.Label(legend_frame, text="Average Score", bg=self.app.colors["chart_bg"], fg=self.app.colors["chart_fg"]).pack(side="left", padx=5)
         
         return chart_frame
+
+    def export_results_pdf(self):
+        """Export current results to PDF"""
+        if not generate_pdf_report:
+            messagebox.showerror("Error", "PDF Generator module not available.")
+            return
+
+        try:
+            # Prepare data for report
+            filename = generate_pdf_report(
+                self.app.username,
+                self.app.current_score,
+                self.app.current_max_score,
+                self.app.current_percentage,
+                self.app.age,
+                self.app.responses,
+                self.app.questions,
+                self.app.sentiment_score if hasattr(self.app, 'sentiment_score') else None
+            )
+            
+            messagebox.showinfo("Success", f"Report saved successfully:\n{filename}")
+            
+            # Optional: Open the file
+            # import os
+            # os.startfile(filename) 
+            
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to generate PDF:\n{str(e)}")
+            logging.error(f"PDF Export failed: {e}")
 
     def show_visual_results(self):
         """Show visual results with charts and graphs"""
@@ -608,6 +641,19 @@ class ResultsManager:
                 text="Compare Previous",
                 command=self.show_comparison_screen,
                 font=("Arial", 11),
+                width=16
+            ).pack(side="left", padx=5)
+        
+        # Export PDF Button
+        if generate_pdf_report:
+            self.app.create_widget(
+                tk.Button,
+                row1_frame,
+                text="📄 Export Report",
+                command=self.export_results_pdf,
+                font=("Arial", 11),
+                bg=self.app.colors["button_bg"], # Use standard or specific? Let's use standard but distinct if possible.
+                fg=self.app.colors["button_fg"],
                 width=16
             ).pack(side="left", padx=5)
         

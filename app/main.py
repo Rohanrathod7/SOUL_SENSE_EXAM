@@ -13,6 +13,7 @@ from app.ui.styles import UIStyles
 from app.ui.auth import AuthManager
 from app.ui.exam import ExamManager
 from app.ui.results import ResultsManager
+from app.ui.settings import SettingsManager
 
 # NLTK (optional) - import defensively so app can run without it
 try:
@@ -165,6 +166,7 @@ class SoulSenseApp:
         self.auth = AuthManager(self)
         self.exam = ExamManager(self)
         self.results = ResultsManager(self)
+        self.settings_manager = SettingsManager(self)
         
         # Initialize ML Predictor
 
@@ -269,7 +271,13 @@ class SoulSenseApp:
         self.questions = all_questions[:min(question_count, len(all_questions))]
         logging.info("Using %s questions based on settings", len(self.questions))
         
+        self.total_questions_count = len(all_questions)
         self.create_welcome_screen()
+
+    def reload_questions(self, count):
+        """Reload questions based on new settings count"""
+        self.questions = all_questions[:min(count, len(all_questions))]
+        logging.info("Reloaded %s questions based on settings", len(self.questions))
 
     def apply_theme(self, theme_name):
         """Apply the selected theme to the application"""
@@ -451,180 +459,7 @@ class SoulSenseApp:
             
     def show_settings(self):
         """Show settings configuration window"""
-        settings_win = tk.Toplevel(self.root)
-        settings_win.title("Settings")
-        settings_win.geometry("400x400")
-        
-        # Apply theme to settings window
-        settings_win.configure(bg=self.colors["bg"])
-        
-        # Center window
-        settings_win.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - settings_win.winfo_width()) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - settings_win.winfo_height()) // 2
-        settings_win.geometry(f"+{x}+{y}")
-        
-        # Title
-        title = tk.Label(
-            settings_win,
-            text="Configure Test Settings",
-            font=("Arial", 16, "bold"),
-            bg=self.colors["bg"],
-            fg=self.colors["fg"]
-        )
-        title.pack(pady=15)
-        
-        # Question Count
-        qcount_frame = tk.Frame(settings_win, bg=self.colors["bg"])
-        qcount_frame.pack(pady=10, fill="x", padx=20)
-        
-        qcount_label = tk.Label(
-            qcount_frame,
-            text="Number of Questions:",
-            font=("Arial", 12),
-            bg=self.colors["bg"],
-            fg=self.colors["fg"]
-        )
-        qcount_label.pack(anchor="w")
-        
-        self.qcount_var = tk.IntVar(value=self.settings.get("question_count", 10))
-        qcount_spin = tk.Spinbox(
-            qcount_frame,
-            from_=5,
-            to=min(50, len(all_questions)),
-            textvariable=self.qcount_var,
-            font=("Arial", 12),
-            width=10,
-            bg=self.colors["entry_bg"],
-            fg=self.colors["entry_fg"],
-            buttonbackground=self.colors["button_bg"]
-        )
-        qcount_spin.pack(anchor="w", pady=5)
-        
-        # Theme Selection
-        theme_frame = tk.Frame(settings_win, bg=self.colors["bg"])
-        theme_frame.pack(pady=10, fill="x", padx=20)
-        
-        theme_label = tk.Label(
-            theme_frame,
-            text="Theme:",
-            font=("Arial", 12),
-            bg=self.colors["bg"],
-            fg=self.colors["fg"]
-        )
-        theme_label.pack(anchor="w")
-        
-        self.theme_var = tk.StringVar(value=self.settings.get("theme", "light"))
-        
-        theme_light = tk.Radiobutton(
-            theme_frame,
-            text="Light Theme",
-            variable=self.theme_var,
-            value="light",
-            bg=self.colors["bg"],
-            fg=self.colors["fg"],
-            selectcolor=self.colors["bg"],
-            activebackground=self.colors["bg"],
-            activeforeground=self.colors["fg"]
-        )
-        theme_light.pack(anchor="w", pady=2)
-        
-        theme_dark = tk.Radiobutton(
-            theme_frame,
-            text="Dark Theme",
-            variable=self.theme_var,
-            value="dark",
-            bg=self.colors["bg"],
-            fg=self.colors["fg"],
-            selectcolor=self.colors["bg"],
-            activebackground=self.colors["bg"],
-            activeforeground=self.colors["fg"]
-        )
-        theme_dark.pack(anchor="w", pady=2)
-        
-        # Sound Effects
-        sound_frame = tk.Frame(settings_win, bg=self.colors["bg"])
-        sound_frame.pack(pady=10, fill="x", padx=20)
-        
-        self.sound_var = tk.BooleanVar(value=self.settings.get("sound_effects", True))
-        sound_cb = tk.Checkbutton(
-            sound_frame,
-            text="Enable Sound Effects",
-            variable=self.sound_var,
-            bg=self.colors["bg"],
-            fg=self.colors["fg"],
-            selectcolor=self.colors["bg"],
-            activebackground=self.colors["bg"],
-            activeforeground=self.colors["fg"]
-        )
-        sound_cb.pack(anchor="w")
-        
-        # Buttons
-        btn_frame = tk.Frame(settings_win, bg=self.colors["bg"])
-        btn_frame.pack(pady=20)
-        
-        def apply_settings():
-            """Apply and save settings"""
-            new_settings = {
-                "question_count": self.qcount_var.get(),
-                "theme": self.theme_var.get(),
-                "sound_effects": self.sound_var.get()
-            }
-            
-            # Update questions based on new count
-            question_count = new_settings["question_count"]
-            self.questions = all_questions[:min(question_count, len(all_questions))]
-            
-            # Save settings
-            self.settings.update(new_settings)
-            if save_settings(self.settings):
-                # Apply theme immediately
-                self.apply_theme(new_settings["theme"])
-                messagebox.showinfo("Success", "Settings saved successfully!")
-                settings_win.destroy()
-                # Recreate welcome screen with updated settings
-                self.create_welcome_screen()
-        
-        apply_btn = tk.Button(
-            btn_frame,
-            text="Apply",
-            command=apply_settings,
-            font=("Arial", 12),
-            bg=self.colors["button_bg"],
-            fg=self.colors["button_fg"],
-            width=10,
-            activebackground=self.darken_color(self.colors["button_bg"])
-        )
-        apply_btn.pack(side="left", padx=5)
-        
-        cancel_btn = tk.Button(
-            btn_frame,
-            text="Cancel",
-            command=settings_win.destroy,
-            font=("Arial", 12),
-            bg=self.colors["button_bg"],
-            fg=self.colors["button_fg"],
-            width=10,
-            activebackground=self.darken_color(self.colors["button_bg"])
-        )
-        cancel_btn.pack(side="left", padx=5)
-        
-        def reset_defaults():
-            """Reset to default settings"""
-            self.qcount_var.set(DEFAULT_SETTINGS["question_count"])
-            self.theme_var.set(DEFAULT_SETTINGS["theme"])
-            self.sound_var.set(DEFAULT_SETTINGS["sound_effects"])
-        
-        reset_btn = tk.Button(
-            settings_win,
-            text="Reset to Defaults",
-            command=reset_defaults,
-            font=("Arial", 10),
-            bg=self.colors["button_bg"],
-            fg=self.colors["button_fg"],
-            activebackground=self.darken_color(self.colors["button_bg"])
-        )
-        reset_btn.pack(pady=10)
+        self.settings_manager.show_settings()
 
     # ---------- ORIGINAL SCREENS (Modified) ----------
     def create_username_screen(self):

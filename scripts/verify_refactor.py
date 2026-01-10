@@ -19,7 +19,7 @@ try:
     print("SUCCESS: Instantiated SoulSenseApp (Baseline)")
     
     # Check for Refactor Attributes
-    attributes = ['styles', 'auth', 'exam', 'results']
+    attributes = ['styles', 'auth', 'exam', 'results', 'settings_manager']
     missing = []
     for attr in attributes:
         if hasattr(app, attr):

@@ -1066,3 +1066,24 @@ Traceback (most recent call last):
 TypeError: 'Response' object is not subscriptable
 2026-01-10 17:36:10,889 - app.time_based_analysis - ERROR - Error analyzing response patterns for rohan: An unexpected database error occurred.
 2026-01-10 17:36:11,089 - emotional_profile_clustering - WARNING - Model not fitted. Call fit() first.
+2026-01-10 17:42:05,010 - root - INFO - Logging initialized.
+2026-01-10 17:42:05,012 - root - INFO - Application started
+2026-01-10 17:42:05,022 - root - INFO - Loaded 10 total questions from DB
+2026-01-10 17:42:07,433 - root - INFO - ML Predictor initialized successfully
+2026-01-10 17:42:07,478 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-10 17:42:07,479 - root - INFO - Using 9 questions based on settings
+2026-01-10 17:45:37,146 - root - INFO - Logging initialized.
+2026-01-10 17:45:37,155 - root - INFO - Application started
+2026-01-10 17:45:37,161 - root - INFO - Loaded 10 total questions from DB
+2026-01-10 17:45:37,667 - root - INFO - ML Predictor initialized successfully
+2026-01-10 17:45:37,686 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-10 17:45:37,686 - root - INFO - Using 9 questions based on settings
+2026-01-10 17:46:17,265 - root - INFO - Logging initialized.
+2026-01-10 17:46:17,363 - root - INFO - Application started
+2026-01-10 17:46:17,365 - root - INFO - Loaded 10 total questions from DB
+2026-01-10 17:46:19,742 - root - INFO - ML Predictor initialized successfully
+2026-01-10 17:46:19,790 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-10 17:46:19,790 - root - INFO - Using 9 questions based on settings
+2026-01-10 17:46:29,871 - root - INFO - Reloaded 9 questions based on settings
+2026-01-10 17:46:37,448 - root - INFO - Reloaded 9 questions based on settings
+2026-01-10 17:47:20,173 - root - INFO - Session started | user=rohan | age=20 | age_group=adult | profession=Professional | questions=9
