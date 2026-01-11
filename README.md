@@ -394,25 +394,55 @@ python -m app.main
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Automated Testing & CI/CD
 
-From the project root:
+We maintain a comprehensive test suite to ensure application stability.
 
-```bash
-    python -m pytest -v
-```
+### 1. Running Tests Locally
 
-Tests use temporary SQLite databases and do not affect production data.
-
-### Running Outlier Detection Tests
+Run the full test suite with:
 
 ```bash
-    python -m pytest tests/test_outlier_detection.py -v
+python -m pytest tests/ -v
 ```
+
+This executes:
+
+- **Unit Tests**: Verifies UI logic (auth, exam flow) using mocks.
+- **Integration Tests**: Verifies database schemas and clustering logic.
+- **Migration Tests**: Verifies `alembic upgrade head` works on a fresh DB.
+
+### 2. Continuous Integration (GitHub Actions)
+
+This project uses **GitHub Actions** for CI. Every push to `main` or Pull Request triggers:
+
+- **Linting**: `flake8` checks for code style issues.
+- **Testing**: `pytest` runs the full suite in a headless environment.
+
+Configuration file: `.github/workflows/python-app.yml`
+
+### 3. Database Migrations
+
+We use **Alembic** for safe database schema updates.
+
+**Apply Migrations:**
+
+```bash
+python -m alembic upgrade head
+```
+
+**Create New Migration (after modifying models):**
+
+```bash
+python -m alembic revision --autogenerate -m "describe_change"
+```
+
+**Verify Migrations:**
+Our test suite includes `tests/test_migrations.py` which guarantees that migrations apply correctly to a fresh database.
 
 ---
 
-## 📊 Outlier Detection Feature
+## 📊 Outlier Detection Features
 
 ### Overview
 

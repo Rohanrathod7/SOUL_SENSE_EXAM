@@ -2837,3 +2837,77 @@ TypeError: 'Response' object is not subscriptable
 2026-01-11 13:00:49,124 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
 2026-01-11 13:00:49,568 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
 2026-01-11 13:00:49,569 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:11:43,048 - root - INFO - Logging initialized.
+2026-01-11 13:11:43,085 - root - INFO - Application started
+2026-01-11 13:11:43,086 - root - INFO - Loaded 10 total questions from DB
+2026-01-11 13:11:43,481 - app.models - INFO - Optimizing database settings...
+2026-01-11 13:11:43,484 - app.models - INFO - Creating question search optimization indexes...
+2026-01-11 13:11:43,485 - app.models - WARNING - FTS5 not available, skipping full-text search optimization
+2026-01-11 13:11:43,500 - app.questions - INFO - All caches cleared
+2026-01-11 13:11:43,743 - app.models - INFO - Optimizing database settings...
+2026-01-11 13:11:43,745 - app.models - INFO - Creating question search optimization indexes...
+2026-01-11 13:11:43,745 - app.models - WARNING - FTS5 not available, skipping full-text search optimization
+2026-01-11 13:11:43,754 - app.questions - INFO - All caches cleared
+2026-01-11 13:11:44,464 - app.models - INFO - Optimizing database settings...
+2026-01-11 13:11:44,466 - app.models - INFO - Creating question search optimization indexes...
+2026-01-11 13:11:44,467 - app.models - WARNING - FTS5 not available, skipping full-text search optimization
+2026-01-11 13:11:44,475 - app.questions - INFO - All caches cleared
+2026-01-11 13:11:44,730 - app.models - INFO - Optimizing database settings...
+2026-01-11 13:11:44,732 - app.models - INFO - Creating question search optimization indexes...
+2026-01-11 13:11:44,732 - app.models - WARNING - FTS5 not available, skipping full-text search optimization
+2026-01-11 13:11:44,740 - app.questions - INFO - All caches cleared
+2026-01-11 13:11:45,507 - app.models - INFO - Optimizing database settings...
+2026-01-11 13:11:45,508 - app.models - INFO - Creating question search optimization indexes...
+2026-01-11 13:11:45,509 - app.models - WARNING - FTS5 not available, skipping full-text search optimization
+2026-01-11 13:11:45,519 - app.questions - INFO - All caches cleared
+2026-01-11 13:11:46,026 - root - WARNING - Config file not found at B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\config.json. Using defaults.
+2026-01-11 13:11:46,028 - root - WARNING - Config file not found at B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\config.json. Using defaults.
+2026-01-11 13:11:46,072 - app.models - INFO - Optimizing database settings...
+2026-01-11 13:11:46,073 - app.models - INFO - Creating question search optimization indexes...
+2026-01-11 13:11:46,073 - app.models - WARNING - FTS5 not available, skipping full-text search optimization
+2026-01-11 13:11:46,081 - app.questions - INFO - All caches cleared
+2026-01-11 13:11:53,557 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:11:53,679 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:11:53,680 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:11:53,720 - app.ml.clustering - WARNING - Insufficient data for clustering. Need at least 4 users.
+2026-01-11 13:11:54,143 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:11:54,199 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:11:54,201 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:11:54,805 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:11:54,874 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:11:54,875 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:11:57,198 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:11:57,353 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:11:57,355 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:11:58,063 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:11:58,108 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:11:58,109 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:11:58,471 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:11:58,570 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:11:58,572 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:12:04,038 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:04,276 - app.ml.clustering - INFO - Model saved to C:\Users\Rohan Rathod\AppData\Local\Temp\pytest-of-Rohan Rathod\pytest-14\test_model_save_load0\test_models\emotional_profile_model.pkl
+2026-01-11 13:12:04,278 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:12:04,321 - app.ml.clustering - INFO - Model loaded from C:\Users\Rohan Rathod\AppData\Local\Temp\pytest-of-Rohan Rathod\pytest-14\test_model_save_load0\test_models\emotional_profile_model.pkl
+2026-01-11 13:12:04,907 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:04,960 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:04,961 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:12:04,992 - app.ml.clustering - INFO - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:07,702 - app.ml.clustering - INFO - Optimal clusters: 3, using configured: 4
+2026-01-11 13:12:08,087 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:08,088 - app.ml.clustering - INFO - Clustering complete: 10 users into 4 profiles
+2026-01-11 13:12:11,087 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:11,208 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:11,209 - app.ml.clustering - INFO - Clustering complete: 10 users into 4 profiles
+2026-01-11 13:12:14,116 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:14,310 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:14,311 - app.ml.clustering - INFO - Clustering complete: 10 users into 4 profiles
+2026-01-11 13:12:18,064 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:18,166 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:18,167 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:12:20,758 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:21,176 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:21,177 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
+2026-01-11 13:12:25,010 - app.ml.clustering - INFO - Optimal clusters: 2, using configured: 4
+2026-01-11 13:12:25,880 - app.ml.clustering - INFO - Model saved to B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-11 13:12:25,882 - app.ml.clustering - INFO - Clustering complete: 50 users into 4 profiles
