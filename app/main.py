@@ -165,7 +165,7 @@ class SoulSenseApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Soul Sense EQ Test")
-        self.root.geometry("650x550")  # Increased size for benchmarking
+        self.root.geometry("800x700")  # Increased size for better layout
         
         # Initialize Styles Manager
         self.styles = UIStyles(self)
@@ -252,6 +252,7 @@ class SoulSenseApp:
             logging.error(f"Failed to initialize SentimentIntensityAnalyzer: {e}")
             self.sia = None
 
+        logging.error("\n\n>>> APP INITIALIZED V2.1 <<<\n")
         self.current_question = 0
         self.responses = []
         self.current_score = 0
@@ -264,7 +265,35 @@ class SoulSenseApp:
         logging.info("Using %s questions based on settings", len(self.questions))
         
         self.total_questions_count = len(all_questions)
+        
+        # User State
+        self.current_user_id = None
+        self.username = ""
+        self.age = None
+        self.age_group = None
+        self.profession = None
+        
         self.create_welcome_screen()
+
+    def load_user_settings(self, user_id):
+        """Load and apply settings for specific user"""
+        from app.db import get_user_settings
+        
+        self.current_user_id = user_id
+        user_settings = get_user_settings(user_id)
+        
+        # Update current settings
+        self.settings.update(user_settings)
+        logging.info(f"Loaded settings for user {user_id}: {user_settings}")
+        
+        # Apply immediate effects
+        self.apply_theme(self.settings.get("theme", "light"))
+        
+        # Reload questions if count changed
+        q_count = self.settings.get("question_count", 10)
+        self.reload_questions(q_count)
+        
+        return user_settings
 
     def reload_questions(self, count):
         """Reload questions based on new settings count"""
@@ -292,27 +321,94 @@ class SoulSenseApp:
 
 
 
+    def logout_user(self):
+        """Logout current user and reset to defaults"""
+        logging.info(f"User {self.username} logged out")
+        
+        # Reset State
+        self.current_user_id = None
+        self.username = ""
+        self.age = None
+        self.age_group = None
+        self.profession = None
+        
+        # Reset Settings to Defaults
+        self.settings = {
+            "question_count": 10,
+            "theme": "light",
+            "sound_effects": True
+        }
+        
+        # Apply Defaults
+        self.apply_theme("light")
+        self.reload_questions(10)
+        
+        # Refresh UI
+        self.create_welcome_screen()
+
     def create_welcome_screen(self):
         """Create initial welcome screen with settings option"""
         self.auth.create_welcome_screen()
+        
+        # Login / Logout Button (HEADER)
+        header_frame = self.create_widget(tk.Frame, self.root)
+        header_frame.pack(fill="x", padx=20, pady=(10, 0))
+        
+        if self.current_user_id:
+            auth_text = "Logout"
+            auth_cmd = self.logout_user
+            auth_bg = "#EF4444" # Red
+            auth_fg = "white"
+        else:
+            auth_text = "Login"
+            auth_cmd = self.open_login_screen
+            auth_bg = "#3B82F6" # Blue
+            auth_fg = "white"
+            
+        auth_btn = self.create_widget(
+            tk.Button,
+            header_frame,
+            text=auth_text,
+            command=auth_cmd,
+            font=("Arial", 10, "bold"),
+            width=10,
+            bg=auth_bg,
+            fg=auth_fg
+        )
+        auth_btn.pack()
         
         # Title
         title = self.create_widget(
             tk.Label,
             self.root,
-            text="Welcome to Soul Sense EQ Test",
+            text="Soul Sense EQ",
             font=("Arial", 22, "bold")
         )
         title.pack(pady=20)
         
-        # Description
+        # User Welcome / Description
+        if self.current_user_id:
+            welcome_text = f"Welcome back, {self.username}!"
+            desc_text = "Ready to continue your journey?"
+        else:
+            welcome_text = "Assess your Emotional Intelligence"
+            desc_text = "with our comprehensive questionnaire"
+            
+        welcome_label = self.create_widget(
+            tk.Label,
+            self.root,
+            text=welcome_text,
+            font=("Arial", 14, "bold" if self.current_user_id else "normal")
+        )
+        welcome_label.pack(pady=(10, 5))
+        
         desc = self.create_widget(
             tk.Label,
             self.root,
-            text="Assess your Emotional Intelligence\nwith our comprehensive questionnaire",
+            text=desc_text,
             font=("Arial", 12)
         )
-        desc.pack(pady=10)
+        desc.pack(pady=5)
         
         # Current settings display
         settings_frame = self.create_widget(tk.Frame, self.root)
@@ -339,74 +435,39 @@ class SoulSenseApp:
         
         # Buttons
         button_frame = self.create_widget(tk.Frame, self.root)
-        button_frame.pack(pady=20)
+        button_frame.pack(pady=10) # Reduced padding
         
-        start_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="Start Test",
-            command=self.create_username_screen,
-            font=("Arial", 12),
-            width=15
-        )
-        start_btn.pack(pady=5)
-        
-        # Journal Button
-        journal_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="≡ƒôû Daily Journal",
-            command=self.open_journal_flow,
-            font=("Arial", 12),
-            width=15,
-            bg="#FFB74D", # Orange accent
-            fg="black"
-        )
-        journal_btn.pack(pady=5)
 
-        # Dashboard Button (NEW)
-        dashboard_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="≡ƒôè Dashboard",
-            command=self.open_dashboard_flow,
-            font=("Arial", 12),
-            width=15,
-            bg="#29B6F6", # Light Blue accent
-            fg="black"
-        )
-        dashboard_btn.pack(pady=5)
         
-        # View History button
-        history_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="View History",
-            command=self.show_history_screen,
-            font=("Arial", 12),
-            width=15
-        )
-        history_btn.pack(pady=5)
+
+
+    def on_start_test_click(self):
+        """Handle start test click dynamically checking auth status"""
+        logging.error(f"\n\n>>> DEBUG: Start Test Clicked! (New Handler)")
+        logging.error(f">>> DEBUG: self.current_user_id = {self.current_user_id}")
         
-        settings_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="Settings",
-            command=self.show_settings,
-            font=("Arial", 12),
-            width=15
-        )
-        settings_btn.pack(pady=5)
+        if self.current_user_id:
+            logging.error(">>> DEBUG: GOING TO EXAM")
+            self.start_test()
+        else:
+            logging.error(">>> DEBUG: GOING TO FORM (ID Missing)")
+            self.create_username_screen(callback=self.create_welcome_screen)
+
+    def show_history_screen(self):
+        """Display history screen using ResultsManager"""
+        self.results_manager.show_history_screen()
         
-        exit_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="Exit",
-            command=self.force_exit,
-            font=("Arial", 12),
-            width=15
-        )
-        exit_btn.pack(pady=5)
+
+
+    def open_login_screen(self):
+        """Safely open login screen with error handling"""
+        print("DEBUG: Opening Login Screen...")
+        try:
+            # We must pass the callback to return here
+            self.create_username_screen(callback=self.create_welcome_screen)
+        except Exception as e:
+            logging.error(f"Failed to open login screen: {e}", exc_info=True)
+            messagebox.showerror("Login Error", f"Could not open login screen: {e}")
 
     def open_journal_flow(self):
         """Handle journal access, prompting for name if needed"""
@@ -476,8 +537,8 @@ class SoulSenseApp:
         self.settings_manager.show_settings()
 
     # ---------- ORIGINAL SCREENS (Modified) ----------
-    def create_username_screen(self):
-        self.auth.create_username_screen()
+    def create_username_screen(self, callback=None):
+        self.auth.create_username_screen(callback=callback)
 
     def validate_name_input(self, name):
         return self.auth.validate_name_input(name)
