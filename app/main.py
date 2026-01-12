@@ -165,7 +165,7 @@ class SoulSenseApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Soul Sense EQ Test")
-        self.root.geometry("650x550")  # Increased size for benchmarking
+        self.root.geometry("800x700")  # Increased size for better layout
         
         # Initialize Styles Manager
         self.styles = UIStyles(self)
@@ -450,42 +450,43 @@ class SoulSenseApp:
         # Journal Button
 
         
-        # Journal Button
-        journal_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="≡ƒôû Daily Journal",
-            command=self.open_journal_flow,
-            font=("Arial", 12),
-            width=15,
-            bg="#FFB74D", # Orange accent
-            fg="black"
-        )
-        journal_btn.pack(pady=5)
+        if self.current_user_id:
+            # Journal Button
+            journal_btn = self.create_widget(
+                tk.Button,
+                button_frame,
+                text="≡ƒôû Daily Journal",
+                command=self.open_journal_flow,
+                font=("Arial", 12),
+                width=15,
+                bg="#FFB74D", # Orange accent
+                fg="black"
+            )
+            journal_btn.pack(pady=5)
 
-        # Dashboard Button (NEW)
-        dashboard_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="≡ƒôè Dashboard",
-            command=self.open_dashboard_flow,
-            font=("Arial", 12),
-            width=15,
-            bg="#29B6F6", # Light Blue accent
-            fg="black"
-        )
-        dashboard_btn.pack(pady=5)
-        
-        # View History button
-        history_btn = self.create_widget(
-            tk.Button,
-            button_frame,
-            text="View History",
-            command=self.show_history_screen,
-            font=("Arial", 12),
-            width=15
-        )
-        history_btn.pack(pady=5)
+            # Dashboard Button (NEW)
+            dashboard_btn = self.create_widget(
+                tk.Button,
+                button_frame,
+                text="≡ƒôè Dashboard",
+                command=self.open_dashboard_flow,
+                font=("Arial", 12),
+                width=15,
+                bg="#29B6F6", # Light Blue accent
+                fg="black"
+            )
+            dashboard_btn.pack(pady=5)
+            
+            # View History button
+            history_btn = self.create_widget(
+                tk.Button,
+                button_frame,
+                text="View History",
+                command=self.show_history_screen,
+                font=("Arial", 12),
+                width=15
+            )
+            history_btn.pack(pady=5)
         
         settings_btn = self.create_widget(
             tk.Button,
