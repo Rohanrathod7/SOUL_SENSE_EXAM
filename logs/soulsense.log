@@ -4829,3 +4829,86 @@ KeyError: 'features'
 2026-01-13 02:24:42,794 - app.services.exam_service - INFO - Exam session started for user: rohan
 2026-01-13 02:24:57,544 - app.services.exam_service - INFO - Exam saved. Score: 8, Sentiment: 52.669999999999995
 2026-01-13 02:25:05,051 - app.ml.clustering - INFO - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-13 12:15:27,179 - root - INFO - Logging initialized.
+2026-01-13 12:15:27,267 - root - INFO - Application started
+2026-01-13 12:15:27,279 - root - INFO - Loaded 10 total questions from DB
+2026-01-13 12:15:30,527 - root - INFO - Loading ML Model: models\risk_model_v20260111_223056.pkl
+2026-01-13 12:15:30,649 - root - INFO - ML Predictor initialized successfully
+2026-01-13 12:15:30,696 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-13 12:15:30,705 - root - ERROR - 
+
+>>> APP INITIALIZED V2.1 <<<
+
+2026-01-13 12:15:30,715 - root - INFO - Using 10 questions based on settings
+2026-01-13 12:19:32,341 - root - INFO - Session started | user=rohan | age=20 | age_group=adult | profession=Student | questions=10
+2026-01-13 12:19:32,774 - root - INFO - Loaded settings for user 4: {'theme': 'dark', 'question_count': 5, 'sound_enabled': True, 'notifications_enabled': True, 'language': 'en'}
+2026-01-13 12:19:32,775 - root - INFO - Reloaded 5 questions based on settings
+2026-01-13 12:19:33,892 - root - ERROR - Failed to open profile: cannot import name 'ApplyTheme' from 'app.ui.styles' (B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ui\styles.py)
+2026-01-13 12:21:36,727 - root - INFO - Logging initialized.
+2026-01-13 12:21:36,743 - root - INFO - Application started
+2026-01-13 12:21:36,745 - root - INFO - Loaded 10 total questions from DB
+2026-01-13 12:21:39,107 - root - INFO - Loading ML Model: models\risk_model_v20260111_223056.pkl
+2026-01-13 12:21:39,243 - root - INFO - ML Predictor initialized successfully
+2026-01-13 12:21:39,279 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-13 12:21:39,280 - root - ERROR - 
+
+>>> APP INITIALIZED V2.1 <<<
+
+2026-01-13 12:21:39,286 - root - INFO - Using 10 questions based on settings
+2026-01-13 12:21:58,597 - root - INFO - Session started | user=rohan | age=20 | age_group=adult | profession=Student | questions=10
+2026-01-13 12:21:58,747 - root - INFO - Loaded settings for user 4: {'theme': 'dark', 'question_count': 5, 'sound_enabled': True, 'notifications_enabled': True, 'language': 'en'}
+2026-01-13 12:21:58,748 - root - INFO - Reloaded 5 questions based on settings
+2026-01-13 12:21:59,965 - root - ERROR - Failed to open profile: 'SoulSenseApp' object has no attribute 'i18n'
+2026-01-13 12:24:09,697 - root - INFO - Logging initialized.
+2026-01-13 12:24:09,710 - root - INFO - Application started
+2026-01-13 12:24:09,712 - root - INFO - Loaded 10 total questions from DB
+2026-01-13 12:24:12,158 - root - INFO - Loading ML Model: models\risk_model_v20260111_223056.pkl
+2026-01-13 12:24:12,207 - root - INFO - ML Predictor initialized successfully
+2026-01-13 12:24:12,281 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-13 12:24:12,296 - root - ERROR - 
+
+>>> APP INITIALIZED V2.1 <<<
+
+2026-01-13 12:24:12,303 - root - INFO - Using 10 questions based on settings
+2026-01-13 12:24:25,804 - root - INFO - Session started | user=rohan | age=20 | age_group=adult | profession=Student | questions=10
+2026-01-13 12:24:27,145 - root - INFO - Loaded settings for user 4: {'theme': 'dark', 'question_count': 5, 'sound_enabled': True, 'notifications_enabled': True, 'language': 'en'}
+2026-01-13 12:24:27,146 - root - INFO - Reloaded 5 questions based on settings
+2026-01-13 12:39:00,507 - root - INFO - Logging initialized.
+2026-01-13 12:39:00,521 - root - INFO - Application started
+2026-01-13 12:39:00,523 - root - INFO - Loaded 10 total questions from DB
+2026-01-13 12:39:02,956 - root - INFO - Loading ML Model: models\risk_model_v20260111_223056.pkl
+2026-01-13 12:39:03,020 - root - INFO - ML Predictor initialized successfully
+2026-01-13 12:39:03,074 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-13 12:39:03,075 - root - ERROR - 
+
+>>> APP INITIALIZED V2.1 <<<
+
+2026-01-13 12:39:03,076 - root - INFO - Using 10 questions based on settings
+2026-01-13 12:39:24,084 - root - INFO - Session started | user=rohan | age=20 | age_group=adult | profession=Student | questions=10
+2026-01-13 12:39:24,242 - root - INFO - Loaded settings for user 4: {'theme': 'dark', 'question_count': 5, 'sound_enabled': True, 'notifications_enabled': True, 'language': 'en'}
+2026-01-13 12:39:24,244 - root - INFO - Reloaded 5 questions based on settings
+2026-01-13 12:40:43,005 - app.ml.clustering - INFO - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-13 12:40:52,712 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:40:52,712 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:40:59,218 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:40:59,315 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:40:59,853 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:40:59,854 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:41:00,551 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:41:00,552 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:41:01,180 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:41:01,181 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-13 12:44:15,971 - root - INFO - Logging initialized.
+2026-01-13 12:44:15,992 - root - INFO - Application started
+2026-01-13 12:44:15,993 - root - INFO - Loaded 10 total questions from DB
+2026-01-13 12:44:18,286 - root - INFO - Loading ML Model: models\risk_model_v20260111_223056.pkl
+2026-01-13 12:44:18,402 - root - INFO - ML Predictor initialized successfully
+2026-01-13 12:44:18,438 - root - INFO - SentimentIntensityAnalyzer initialized successfully
+2026-01-13 12:44:18,438 - root - ERROR - 
+
+>>> APP INITIALIZED V2.1 <<<
+
+2026-01-13 12:44:18,438 - root - INFO - Using 10 questions based on settings
+2026-01-13 12:45:09,114 - root - INFO - Session started | user=rohan | age=20 | age_group=adult | profession=Student | questions=10
+2026-01-13 12:45:09,727 - root - INFO - Loaded settings for user 4: {'theme': 'dark', 'question_count': 5, 'sound_enabled': True, 'notifications_enabled': True, 'language': 'en'}
+2026-01-13 12:45:09,727 - root - INFO - Reloaded 5 questions based on settings
