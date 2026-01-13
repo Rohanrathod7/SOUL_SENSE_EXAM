@@ -189,16 +189,21 @@ class SoulSenseApp:
         self.root.geometry("650x550")  # Increased size for benchmarking
         
         # Initialize ML Predictor
-
-        try:
-            self.ml_predictor = SoulSenseMLPredictor()
-            logging.info("ML Predictor initialized successfully")
-        except Exception as e:
-            logging.error(f"Failed to initialize ML Predictor: {e}")
+        if SoulSenseMLPredictor:
+            try:
+                self.ml_predictor = SoulSenseMLPredictor()
+                logging.info("ML Predictor initialized successfully")
+            except Exception as e:
+                logging.error(f"Failed to initialize ML Predictor: {e}")
+                self.ml_predictor = None
+        else:
             self.ml_predictor = None
 
         # Initialize Journal Feature
-        self.journal_feature = JournalFeature(self.root)
+        if JournalFeature:
+            self.journal_feature = JournalFeature(self.root)
+        else:
+            self.journal_feature = None
 
 
 
@@ -274,11 +279,14 @@ class SoulSenseApp:
         self.reflection_text = ""
         
         # Initialize Sentiment Analyzer
-        try:
-            self.sia = SentimentIntensityAnalyzer()
-            logging.info("SentimentIntensityAnalyzer initialized successfully")
-        except Exception as e:
-            logging.error(f"Failed to initialize SentimentIntensityAnalyzer: {e}")
+        if SENTIMENT_AVAILABLE and SentimentIntensityAnalyzer:
+            try:
+                self.sia = SentimentIntensityAnalyzer()
+                logging.info("SentimentIntensityAnalyzer initialized successfully")
+            except Exception as e:
+                logging.error(f"Failed to initialize SentimentIntensityAnalyzer: {e}")
+                self.sia = None
+        else:
             self.sia = None
 
         self.current_question = 0
@@ -514,6 +522,10 @@ class SoulSenseApp:
 
     def open_journal_flow(self):
         """Handle journal access, prompting for name if needed"""
+        if not self.journal_feature:
+            messagebox.showerror("Error", "Journal feature not available")
+            return
+        
         if not self.username:
             name = simpledialog.askstring("Journal Access", "Please enter your name to access your journal:", parent=self.root)
             if name and name.strip():
@@ -1076,12 +1088,15 @@ class SoulSenseApp:
         else:
             self.reflection_text = text
             # Analyze sentiment
-            try:
-                scores = self.sia.polarity_scores(text)
-                # Convert compound (-1 to 1) to -100 to 100
-                self.sentiment_score = scores['compound'] * 100
-            except Exception as e:
-                logging.error(f"Error analyzing sentiment: {e}")
+            if self.sia:
+                try:
+                    scores = self.sia.polarity_scores(text)
+                    # Convert compound (-1 to 1) to -100 to 100
+                    self.sentiment_score = scores['compound'] * 100
+                except Exception as e:
+                    logging.error(f"Error analyzing sentiment: {e}")
+                    self.sentiment_score = 0.0
+            else:
                 self.sentiment_score = 0.0
         
         self.finish_test()
