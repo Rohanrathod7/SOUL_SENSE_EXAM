@@ -28,6 +28,7 @@ from app.logger import setup_logging
 from app.data_cleaning import DataCleaner
 from app.utils import load_settings, save_settings, compute_age_group
 from app.questions import load_questions
+from app.preferences import ADVICE_TONES, ADVICE_LANGUAGES, get_advice_template
 
 # Try importing optional features
 try:
@@ -266,6 +267,7 @@ class SoulSenseApp:
         self.age = None
         self.age_group = None
         self.profession = None
+        self.user_preferences = {'advice_language': 'en', 'advice_tone': 'friendly'}
         
         # Initialize Sentiment Variables
         self.sentiment_score = 0.0 
@@ -489,6 +491,16 @@ class SoulSenseApp:
             width=15
         )
         settings_btn.pack(pady=5)
+        
+        prefs_btn = self.create_widget(
+            tk.Button,
+            button_frame,
+            text="⚙️ Preferences",
+            command=self.show_preferences,
+            font=("Arial", 12),
+            width=15
+        )
+        prefs_btn.pack(pady=5)
         
         exit_btn = self.create_widget(
             tk.Button,
@@ -2431,6 +2443,43 @@ class SoulSenseApp:
     def clear_screen(self):
         for w in self.root.winfo_children():
             w.destroy()
+
+    def show_preferences(self):
+        win = tk.Toplevel(self.root)
+        win.title("Preferences")
+        win.geometry("450x400")
+        win.configure(bg=self.colors["bg"])
+
+        tk.Label(win, text="⚙️ Personalize Your Advice", font=("Arial", 16, "bold"), bg=self.colors["bg"], fg=self.colors["fg"]).pack(pady=15)
+
+        tk.Label(win, text="🌍 Language:", font=("Arial", 12, "bold"), bg=self.colors["bg"], fg=self.colors["fg"]).pack(pady=10)
+        lang_var = tk.StringVar(value=self.user_preferences['advice_language'])
+        for code, name in ADVICE_LANGUAGES.items():
+            tk.Radiobutton(win, text=name, variable=lang_var, value=code, bg=self.colors["bg"], fg=self.colors["fg"]).pack(anchor="w", padx=50)
+
+        tk.Label(win, text="💬 Tone:", font=("Arial", 12, "bold"), bg=self.colors["bg"], fg=self.colors["fg"]).pack(pady=10)
+        tone_var = tk.StringVar(value=self.user_preferences['advice_tone'])
+        for key, info in ADVICE_TONES.items():
+            tk.Radiobutton(win, text=f"{info['name']} - {info['description']}", variable=tone_var, value=key, bg=self.colors["bg"], fg=self.colors["fg"], wraplength=350).pack(anchor="w", padx=50)
+
+        def save():
+            self.user_preferences['advice_language'] = lang_var.get()
+            self.user_preferences['advice_tone'] = tone_var.get()
+            if self.username:
+                try:
+                    session = get_session()
+                    user = session.query(User).filter_by(username=self.username).first()
+                    if user:
+                        user.advice_language = lang_var.get()
+                        user.advice_tone = tone_var.get()
+                        session.commit()
+                    session.close()
+                except:
+                    pass
+            messagebox.showinfo("Success", "Preferences saved!")
+            win.destroy()
+
+        tk.Button(win, text="Save", command=save, bg="#4CAF50", fg="white", width=15).pack(pady=20)
 
 # ---------------- MAIN ----------------
 class SplashScreen:
