@@ -10,6 +10,8 @@ try:
     from app.services.pdf_generator import generate_pdf_report
 except ImportError:
     generate_pdf_report = None
+import json
+from app.models import AssessmentResult
 
 class ResultsManager:
     def __init__(self, app):
@@ -1125,6 +1127,19 @@ class ResultsManager:
             ).pack(pady=20)
             return
         
+        # Get user_id for Deep Dive results
+        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        user_id = row[0] if row else None
+
+        deep_dives = []
+        if user_id:
+            cursor.execute(
+                "SELECT assessment_type, total_score, timestamp, details FROM assessment_results WHERE user_id = ? ORDER BY timestamp DESC",
+                (user_id,)
+            )
+            deep_dives = cursor.fetchall()
+
         # Create scrollable frame for history
         canvas = tk.Canvas(self.app.root, bg=colors.get("bg", "#0F172A"), highlightthickness=0)
         scrollbar = tk.Scrollbar(self.app.root, orient="vertical", command=canvas.yview)
@@ -1138,6 +1153,10 @@ class ResultsManager:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         
+        # --- SECTION: STANDARD EQ TESTS ---
+        tk.Label(scrollable_frame, text="Standard EQ Assessments", font=("Arial", 14, "bold"), 
+                 bg=colors.get("bg", "#0F172A"), fg=colors.get("text_primary", "#F8FAFC")).pack(anchor="w", padx=20, pady=(10, 5))
+
         # Display each test result
         for idx, (test_id, score, age, timestamp) in enumerate(history):
             # Calculate percentage (assuming 4 points per question)
@@ -1214,6 +1233,44 @@ class ResultsManager:
             # Percentage text
             text_color = "white"
             bar_canvas.create_text(bar_width/2, 10, text=f"{percentage:.1f}%", fill=text_color)
+        
+        # --- SECTION: DEEP DIVE ASSESSMENTS ---
+        if deep_dives:
+            tk.Label(scrollable_frame, text="Deep Dive Insights", font=("Arial", 14, "bold"), 
+                     bg=colors.get("bg", "#0F172A"), fg=colors.get("text_primary", "#F8FAFC")).pack(anchor="w", padx=20, pady=(20, 5))
+            
+            for d_type, d_score, d_ts, d_details in deep_dives:
+                dd_frame = tk.Frame(scrollable_frame, bg=colors.get("surface", "#1E293B"), relief="groove", borderwidth=1)
+                dd_frame.pack(fill="x", padx=20, pady=5)
+                
+                # Header
+                h_frame = tk.Frame(dd_frame, bg=colors.get("surface", "#1E293B"))
+                h_frame.pack(fill="x", padx=10, pady=8)
+                
+                type_map = {
+                    "career_clarity": "🚀 Career Clarity",
+                    "work_satisfaction": "💼 Work Satisfaction",
+                    "strengths_deep_dive": "💪 Strengths Finder"
+                }
+                title = type_map.get(d_type, d_type.replace("_", " ").title())
+                
+                tk.Label(h_frame, text=title, font=("Segoe UI", 12, "bold"), bg=colors.get("surface", "#1E293B"), 
+                         fg=colors.get("text_primary", "#F8FAFC")).pack(side="left")
+                         
+                tk.Label(h_frame, text=f"Score: {d_score}/100", font=("Segoe UI", 12, "bold"), 
+                         bg=colors.get("surface", "#1E293B"), fg=colors.get("primary", "#3B82F6")).pack(side="right")
+                
+                # Date
+                try:
+                    d_date = datetime.fromisoformat(d_ts).strftime("%Y-%m-%d %H:%M")
+                except:
+                    d_date = str(d_ts)
+                tk.Label(h_frame, text=d_date, font=("Segoe UI", 9), bg=colors.get("surface", "#1E293B"), 
+                         fg=colors.get("text_secondary", "#94A3B8")).pack(side="right", padx=15)
+
+                # Details Expander (Static for now)
+                # Parse JSON if needed, but simple score is enough for summary
+
         
         # Pack canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True, padx=20, pady=10)

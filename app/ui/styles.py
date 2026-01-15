@@ -120,6 +120,10 @@ class ColorSchemes:
         "sidebar_active": "#1D4ED8", # Even Darker
         "sidebar_divider": "#60A5FA",
         
+        "input_bg": "#F8FAFC",
+        "input_fg": "#0F172A", 
+        "input_border": "#E2E8F0",
+        
         "card_bg": "#FFFFFF",
         "card_border": "#E2E8F0",
         "card_shadow": "#94A3B833", # Semi-transparent slate
@@ -196,6 +200,10 @@ class ColorSchemes:
         "sidebar_hover": "#334155",
         "sidebar_active": "#475569",
         "sidebar_divider": "#334155",
+        
+        "input_bg": "#0F172A",
+        "input_fg": "#F8FAFC", 
+        "input_border": "#334155",
         
         "card_bg": "#1E293B",
         "card_border": "#334155",
