@@ -430,7 +430,11 @@ class AnalyticsDashboard:
         """Run correlation analysis"""
         try:
             # Clear previous content
+        if self.correlation_text:
+            self.correlation_text.configure(state='normal') # Enable for updates
             self.correlation_text.delete(1.0, tk.END)
+        else:
+            return
             
             # Clear previous visualization
             for widget in self.correlation_viz_frame.winfo_children():
@@ -605,12 +609,18 @@ class AnalyticsDashboard:
             fig.tight_layout()
             
             # Embed in tkinter
-            canvas = FigureCanvasTkAgg(fig, self.correlation_viz_frame)
+            canvas = FigureCanvasTkAgg(fig, master=self.correlation_viz_frame)
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+            # Make read-only
+            if self.correlation_text:
+                 self.correlation_text.configure(state='disabled')
             
         except Exception as e:
             self.correlation_text.insert(tk.END, f"⚠️ Could not create visualizations: {str(e)}\n")
+            if self.correlation_text:
+                 self.correlation_text.configure(state='disabled')
     
     # ========== EXISTING METHODS (UPDATED) ==========
     def show_eq_trends(self, parent):
