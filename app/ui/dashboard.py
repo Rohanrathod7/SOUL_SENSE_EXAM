@@ -430,11 +430,11 @@ class AnalyticsDashboard:
         """Run correlation analysis"""
         try:
             # Clear previous content
-        if self.correlation_text:
-            self.correlation_text.configure(state='normal') # Enable for updates
-            self.correlation_text.delete(1.0, tk.END)
-        else:
-            return
+            if self.correlation_text:
+                self.correlation_text.configure(state='normal') # Enable for updates
+                self.correlation_text.delete(1.0, tk.END)
+            else:
+                return
             
             # Clear previous visualization
             for widget in self.correlation_viz_frame.winfo_children():
