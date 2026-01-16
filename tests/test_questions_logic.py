@@ -35,8 +35,10 @@ def mock_all_io():
         }
 
 def test_load_from_memory_cache(mock_all_io):
+    from app.questions import _get_cache_key
+    
     # Setup cache
-    cache_key = "questions_age_None"
+    cache_key = _get_cache_key(None) # "questions_all"
     test_data = [(1, "Q1", "Tooltip", 10, 100)]
     
     with _cache_lock:
