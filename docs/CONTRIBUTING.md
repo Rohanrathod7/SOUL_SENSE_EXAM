@@ -27,6 +27,7 @@ cd SOUL_SENSE_EXAM
 ```
 
 Add the original repository as an upstream remote:
+
 ```bash
 git remote add upstream https://github.com/nupurmadaan04/SOUL_SENSE_EXAM.git
 ```
@@ -34,7 +35,9 @@ git remote add upstream https://github.com/nupurmadaan04/SOUL_SENSE_EXAM.git
 ---
 
 ### 3. Create a New Branch
+
 Always create a new branch for your changes:
+
 ```bash
 git checkout -b feature/your-branch-name
 ```
@@ -48,9 +51,40 @@ git checkout -b feature/your-branch-name
 - Add comments where necessary
 - Test your changes before committing
 
+### 5. Run Quality Checks Locally
+
+Before committing, please ensure your code passes all quality checks to avoid CI failures:
+
+#### 1. Type Checking
+
+We use **mypy** for static type checking. Your code must pass with **0 errors**.
+
+```bash
+python -m mypy app/
+```
+
+#### 2. Gender Bias Check
+
+Ensure your code uses inclusive language.
+
+```bash
+python scripts/check_gender_bias.py
+```
+
+_Note: This script scans the entire codebase (excluding generated files)._
+
+#### 3. Run Tests
+
+Run the test suite to ensure no regressions.
+
+```bash
+python -m pytest tests/
+```
+
 ---
 
 ### 5. Commit Your Changes
+
 Write clear and meaningful commit messages.
 
 #### Commit message guidelines:
@@ -60,6 +94,7 @@ Write clear and meaningful commit messages.
 - Reference issues if applicable
 
 Example:
+
 ```bash
 git commit -m "Add input validation for login form"
 ```
@@ -67,6 +102,7 @@ git commit -m "Add input validation for login form"
 ---
 
 ### 6. Push Changes to Your Fork
+
 ```bash
 git push origin feature/your-branch-name
 ```
