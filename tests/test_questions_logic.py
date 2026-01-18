@@ -26,11 +26,16 @@ def clean_cache():
 def mock_all_io():
     """Mock File I/O and Threads to prevent side effects"""
     with patch('app.questions.safe_thread_run') as mock_thread, \
-         patch('app.questions.get_session') as mock_session, \
+         patch('app.questions.safe_db_context') as mock_safe_db, \
          patch('app.questions._load_from_disk_cache', return_value=None) as mock_disk:
+        # Setup context manager mock
+        mock_session = MagicMock()
+        mock_safe_db.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_safe_db.return_value.__exit__ = MagicMock(return_value=False)
         yield {
             'thread': mock_thread,
             'session': mock_session,
+            'safe_db': mock_safe_db,
             'disk': mock_disk
         }
 
@@ -52,10 +57,8 @@ def test_load_from_memory_cache(mock_all_io):
     
     # Verify disk/db were NOT called
     mock_all_io['disk'].assert_not_called()
-    # Session shouldn't be used since we bypass steps 3 & 4
-    # But wait, step 3 (try_db_cache) gets session. 
-    # Logic: 1. check mem -> return.
-    mock_all_io['session'].assert_not_called()
+    # safe_db_context shouldn't be used since we return from memory cache
+    mock_all_io['safe_db'].assert_not_called()
 
 def test_load_from_db_fallback(mock_all_io):
     # Memory miss (default)
@@ -80,7 +83,7 @@ def test_load_from_db_fallback(mock_all_io):
         # We need to catch the chain regardless of exact calls
         # A common pattern is to make everything return the same mock query object
         mock_query = MagicMock()
-        mock_session.return_value.query.return_value = mock_query
+        mock_session.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.with_entities.return_value = mock_query
         mock_query.order_by.return_value = mock_query

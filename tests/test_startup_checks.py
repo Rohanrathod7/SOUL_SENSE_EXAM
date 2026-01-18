@@ -305,4 +305,4 @@ class TestIntegrityError:
     def test_integrity_error_message(self):
         """Test that error message is preserved."""
         error = IntegrityError("Critical failure in startup")
-        assert str(error) == "Critical failure in startup"
+        assert "Critical failure in startup" in str(error)

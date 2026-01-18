@@ -1160,8 +1160,10 @@ class ResultsManager:
 
         # Display each test result
         for idx, (test_id, score, age, timestamp) in enumerate(history):
-            # Calculate percentage (assuming 4 points per question)
-            max_score = len(self.app.questions) * 4
+            # Calculate percentage (stateless approximation based on current settings)
+            # Ideally max_score should be stored in DB, but falling back to settings for now
+            question_count = self.app.settings.get("question_count", 10)
+            max_score = question_count * 4
             percentage = (score / max_score) * 100 if max_score > 0 else 0
             
             test_frame = tk.Frame(scrollable_frame, bg=colors.get("surface", "#1E293B"), relief="groove", borderwidth=2)
@@ -1354,8 +1356,10 @@ class ResultsManager:
         # Prepare data for visualization
         test_numbers = list(range(1, len(all_tests) + 1))
         scores = [test[1] for test in all_tests]
-        max_score = len(self.app.questions) * 4
-        percentages = [(score / max_score) * 100 for score in scores]
+        # Use settings for consistency
+        question_count = self.app.settings.get("question_count", 10)
+        max_score = question_count * 4
+        percentages = [(score / max_score) * 100 if max_score > 0 else 0 for score in scores]
         
         # Create main comparison frame
         comparison_frame = tk.Frame(self.app.root, bg=colors.get("bg", "#0F172A"))

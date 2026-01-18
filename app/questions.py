@@ -8,7 +8,7 @@ import threading
 from typing import List, Tuple, Optional, Dict, Any, Union, Callable
 from sqlalchemy.orm import Session
 
-from app.db import get_session, safe_db_context
+from app.db import safe_db_context
 from app.models import Question, QuestionCache, StatisticsCache
 from app.exceptions import DatabaseError, ResourceError
 from app.config import DATA_DIR
@@ -112,42 +112,37 @@ def _load_from_disk_cache(age: Optional[int] = None) -> Optional[List[Tuple[int,
 @lru_cache(maxsize=8)  # Cache for different age filters
 def _get_cached_questions_from_db(age: Optional[int] = None) -> List[Tuple[int, str, Optional[str], int, int]]:
     """Get questions from database with LRU caching"""
-    # Using safe_db_context would be good, but LRU cache expects a return, 
-    # and context manager yields. We can use get_session() but wrap in try..finally properly 
-    # or rely on safe_db_context just for the query.
-    
-    # Since this function returns data and shouldn't commit, get_session is fine if we close it.
-    session = get_session()
+    """Get questions from database with LRU caching"""
     try:
-        query = session.query(Question).filter(Question.is_active == 1)
-        
-        if age is not None:
-            query = query.filter(Question.min_age <= age, Question.max_age >= age)
+        with safe_db_context() as session:
+            query = session.query(Question).filter(Question.is_active == 1)
             
-        # Use optimized query with only needed columns
-        questions = query.with_entities(
-            Question.id, 
-            Question.question_text, 
-            Question.tooltip,
-            Question.min_age,
-            Question.max_age
-        ).order_by(Question.id).all()
-        
-        # Convert to list of tuples
-        rows = [(q.id, q.question_text, q.tooltip, q.min_age, q.max_age) for q in questions]
-
-        if not rows:
-            # We raise ResourceError here instead of Runtime for better classification
-            raise ResourceError("No questions found in database.")
+            if age is not None:
+                query = query.filter(Question.min_age <= age, Question.max_age >= age)
+                
+            # Use optimized query with only needed columns
+            questions = query.with_entities(
+                Question.id, 
+                Question.question_text, 
+                Question.tooltip,
+                Question.min_age,
+                Question.max_age
+            ).order_by(Question.id).all()
             
-        logger.info(f"Loaded {len(rows)} questions from DB (age filter: {age})")
-        return rows
+            # Convert to list of tuples
+            rows = [(q.id, q.question_text, q.tooltip, q.min_age, q.max_age) for q in questions]
+    
+            if not rows:
+                # We raise ResourceError here instead of Runtime for better classification
+                raise ResourceError("No questions found in database.")
+                
+            logger.info(f"Loaded {len(rows)} questions from DB (age filter: {age})")
+            return rows
+            
     except ResourceError:
         raise
     except Exception as e:
         raise DatabaseError("Failed to fetch questions from DB.", original_exception=e)
-    finally:
-        session.close()
 
 def _try_database_cache(session: Session, age: Optional[int] = None) -> Optional[List[Tuple[int, str, Optional[str], int, int]]]:
     """Try to get questions from database cache table first"""
@@ -262,18 +257,18 @@ def load_questions(
             return disk_cache
     
     # 3. Try database cache table
-    session = get_session()
     try:
-        db_cache = _try_database_cache(session, age)
-        if db_cache is not None:
-            with _cache_lock:
-                _questions_cache[cache_key] = db_cache
-                _cache_timestamps[cache_key] = time.time()
-            
-            safe_thread_run(_save_to_disk_cache, db_cache, age)
-            return db_cache
-    finally:
-        session.close()
+        with safe_db_context() as session:
+            db_cache = _try_database_cache(session, age)
+            if db_cache is not None:
+                with _cache_lock:
+                    _questions_cache[cache_key] = db_cache
+                    _cache_timestamps[cache_key] = time.time()
+                
+                safe_thread_run(_save_to_disk_cache, db_cache, age)
+                return db_cache
+    except Exception as e:
+        logger.debug(f"Database cache check failed: {e}")
     
     # 4. Load from database (slowest)
     logger.debug(f"Cache miss for {cache_key}, loading from database...")
@@ -522,52 +517,48 @@ def get_question_count(age: Optional[int] = None) -> int:
     cache_key = f"count_age_{age}" if age is not None else "count_all"
     
     # Check statistics cache first
-    session = get_session()
     try:
-        stat = session.query(StatisticsCache).filter(
-            StatisticsCache.stat_name == cache_key,
-            StatisticsCache.valid_until > datetime.now().isoformat()
-        ).first()
-        
-        if stat:
-            return int(stat.stat_value)
+        with safe_db_context() as session:
+            stat = session.query(StatisticsCache).filter(
+                StatisticsCache.stat_name == cache_key,
+                StatisticsCache.valid_until > datetime.now().isoformat()
+            ).first()
+            
+            if stat:
+                return int(stat.stat_value)
     except Exception:
         pass # Fallback to DB count
-    finally:
-        session.close()
     
     # Count from database
-    session = get_session()
     try:
-        query = session.query(Question).filter(Question.is_active == 1)
-        
-        if age is not None:
-            query = query.filter(Question.min_age <= age, Question.max_age >= age)
+        with safe_db_context() as session:
+            query = session.query(Question).filter(Question.is_active == 1)
             
-        count = query.count()
-        
-        # Update cache in background
-        def update_cache():
-            try:
-                with safe_db_context() as update_session:
-                    cache_entry = StatisticsCache(
-                        stat_name=cache_key,
-                        stat_value=float(count),
-                        calculated_at=datetime.now().isoformat(),
-                        valid_until=(datetime.now() + timedelta(hours=1)).isoformat()
-                    )
-                    update_session.merge(cache_entry)
-            except Exception as e:
-                logger.error(f"Failed to update count cache: {e}")
-        
-        safe_thread_run(update_cache)
-        
-        return count
+            if age is not None:
+                query = query.filter(Question.min_age <= age, Question.max_age >= age)
+                
+            count = query.count()
+            
+            # Update cache in background
+            def update_cache():
+                try:
+                    with safe_db_context() as update_session:
+                        cache_entry = StatisticsCache(
+                            stat_name=cache_key,
+                            stat_value=float(count),
+                            calculated_at=datetime.now().isoformat(),
+                            valid_until=(datetime.now() + timedelta(hours=1)).isoformat()
+                        )
+                        update_session.merge(cache_entry)
+                except Exception as e:
+                    logger.error(f"Failed to update count cache: {e}")
+            
+            safe_thread_run(update_cache)
+            
+            return count
     except Exception as e:
         logger.error(f"Failed to count questions: {e}")
         return 0
-    finally:
-        session.close()
 
 def preload_all_question_sets():
     """Preload common question sets in background"""

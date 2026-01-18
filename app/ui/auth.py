@@ -461,37 +461,38 @@ class AuthManager:
         
         # Check/Create User in DB for Settings Persistence
         try:
-            from app.db import get_session
+            from app.db import safe_db_context
             from app.models import User
             from datetime import datetime
             
-            session = get_session()
-            user = session.query(User).filter_by(username=username).first()
-            
-            if not user:
-                # Implicit Registration
-                user = User(
-                    username=username,
-                    password_hash="guest_access", 
-                    created_at=datetime.utcnow().isoformat(),
-                    last_login=datetime.utcnow().isoformat()
-                )
-                session.add(user)
-                session.commit()
-                logging.info(f"Created new user for settings: {username}")
+            with safe_db_context() as session:
+                user = session.query(User).filter_by(username=username).first()
                 
-                # RESET SETTINGS FOR NEW USER (As requested)
-                # Ensure we start with defaults
-                # Note: load_user_settings will load from DB, which are defaults for new user. 
-                # Guest settings in self.app.settings will be overwritten. This is CORRECT.
+                if not user:
+                    # Implicit Registration
+                    user = User(
+                        username=username,
+                        password_hash="guest_access", 
+                        created_at=datetime.utcnow().isoformat(),
+                        last_login=datetime.utcnow().isoformat()
+                    )
+                    session.add(user)
+                    # safe_db_context will commit on exit
+                    logging.info(f"Created new user for settings: {username}")
+                    
+                    # RESET SETTINGS FOR NEW USER (As requested)
+                    # Ensure we start with defaults
+                    # Note: load_user_settings will load from DB, which are defaults for new user. 
+                    # Guest settings in self.app.settings will be overwritten. This is CORRECT.
+                    
+                else:
+                    user.last_login = datetime.utcnow().isoformat()
+                    # safe_db_context will commit on exit
                 
-            else:
-                user.last_login = datetime.utcnow().isoformat()
-                session.commit()
-            
-            # Load User Settings (Applies Theme etc)
-            self.app.load_user_settings(user.id)
-            session.close()
+                # Flush to get ID if new
+                session.flush()
+                # Load User Settings (Applies Theme etc)
+                self.app.load_user_settings(user.id)
             
         except Exception as e:
             logging.error(f"Failed to load user settings: {e}")
