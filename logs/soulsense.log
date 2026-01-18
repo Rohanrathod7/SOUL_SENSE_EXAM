@@ -146,3 +146,81 @@ KeyboardInterrupt
 2026-01-14 16:37:58,630 - root - INFO - Loaded settings for user 1: {'theme': 'dark', 'question_count': 5, 'sound_enabled': True, 'notifications_enabled': True, 'language': 'en'}
 2026-01-14 16:37:58,631 - root - INFO - Reloaded 5 questions based on settings
 2026-01-14 16:38:30,421 - app.ml.clustering - INFO - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-18 14:50:36 - root - INFO - [logger.py:85] - Logging initialized.
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:298] - Running startup integrity checks...
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:268] - Config integrity check passed
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ config_integrity: Configuration is valid
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:195] - Required files check passed
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ required_files: All required files and directories present
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:121] - Database schema check passed
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ database_schema: All required tables present
+2026-01-18 14:50:36 - app.startup_checks - INFO - [startup_checks.py:341] - Integrity checks complete: 3 passed, 0 warnings, 0 failed
+2026-01-18 14:50:36 - __main__ - INFO - [main.py:485] - Startup Integrity Check Results:
+========================================
+✓ config_integrity: Configuration is valid
+✓ required_files: All required files and directories present
+✓ database_schema: All required tables present
+========================================
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: 25)
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: 35)
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: 50)
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: None)
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: None)
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: 18)
+2026-01-18 14:50:36 - app.questions - INFO - [questions.py:143] - Loaded 100 questions from DB (age filter: 65)
+2026-01-18 14:50:49 - app.services.exam_service - INFO - [exam_service.py:55] - Exam session started for user: rohan1
+2026-01-18 14:50:51 - app.ml.clustering - INFO - [clustering.py:617] - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-18 14:51:14 - __main__ - INFO - [main.py:430] - Initiating graceful application shutdown...
+2026-01-18 14:51:14 - __main__ - INFO - [main.py:439] - Database session committed and closed successfully
+2026-01-18 14:51:14 - __main__ - INFO - [main.py:444] - Application shutdown complete
+2026-01-18 14:51:15 - __main__ - INFO - [main.py:430] - Initiating graceful application shutdown...
+2026-01-18 14:51:15 - __main__ - INFO - [main.py:439] - Database session committed and closed successfully
+2026-01-18 14:51:15 - __main__ - INFO - [main.py:444] - Application shutdown complete
+2026-01-18 15:14:10 - root - INFO - [logger.py:85] - Logging initialized.
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:298] - Running startup integrity checks...
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:268] - Config integrity check passed
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ config_integrity: Configuration is valid
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:195] - Required files check passed
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ required_files: All required files and directories present
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:121] - Database schema check passed
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ database_schema: All required tables present
+2026-01-18 15:14:10 - app.startup_checks - INFO - [startup_checks.py:341] - Integrity checks complete: 3 passed, 0 warnings, 0 failed
+2026-01-18 15:14:10 - __main__ - INFO - [main.py:485] - Startup Integrity Check Results:
+========================================
+✓ config_integrity: Configuration is valid
+✓ required_files: All required files and directories present
+✓ database_schema: All required tables present
+========================================
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: 50)
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: 35)
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: None)
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: 18)
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: 25)
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: 65)
+2026-01-18 15:14:11 - app.questions - INFO - [questions.py:139] - Loaded 100 questions from DB (age filter: None)
+2026-01-18 15:18:17 - __main__ - INFO - [main.py:430] - Initiating graceful application shutdown...
+2026-01-18 15:18:18 - __main__ - INFO - [main.py:439] - Database session committed and closed successfully
+2026-01-18 15:18:18 - __main__ - INFO - [main.py:444] - Application shutdown complete
+2026-01-18 16:14:33 - root - INFO - [logger.py:85] - Logging initialized.
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:298] - Running startup integrity checks...
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:268] - Config integrity check passed
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ config_integrity: Configuration is valid
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:195] - Required files check passed
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ required_files: All required files and directories present
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:121] - Database schema check passed
+2026-01-18 16:14:33 - app.questions - INFO - [questions.py:51] - Loaded 100 active questions into memory.
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:316] - ✓ database_schema: All required tables present
+2026-01-18 16:14:33 - app.startup_checks - INFO - [startup_checks.py:341] - Integrity checks complete: 3 passed, 0 warnings, 0 failed
+2026-01-18 16:14:33 - __main__ - INFO - [main.py:485] - Startup Integrity Check Results:
+========================================
+✓ config_integrity: Configuration is valid
+✓ required_files: All required files and directories present
+✓ database_schema: All required tables present
+========================================
+2026-01-18 16:14:33 - __main__ - INFO - [main.py:515] - Preloading questions into memory...
+2026-01-18 16:14:33 - app.questions - INFO - [questions.py:51] - Loaded 100 active questions into memory.
+2026-01-18 16:15:44 - app.services.exam_service - INFO - [exam_service.py:55] - Exam session started for user: rohan1
+2026-01-18 16:15:47 - app.ml.clustering - INFO - [clustering.py:617] - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-18 16:15:49 - app.ml.clustering - INFO - [clustering.py:617] - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-18 16:15:55 - app.ml.clustering - INFO - [clustering.py:617] - Model loaded from B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ml\models\clustering\emotional_profile_model.pkl
+2026-01-18 16:15:56 - app.services.exam_service - INFO - [exam_service.py:55] - Exam session started for user: rohan1

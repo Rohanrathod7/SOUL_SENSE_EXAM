@@ -509,6 +509,13 @@ if __name__ == "__main__":
             raise SystemExit(1)
         
         # All checks passed, start the application
+        
+        # Initialize Questions Cache (Preload)
+        from app.questions import initialize_questions
+        logger.info("Preloading questions into memory...")
+        if not initialize_questions():
+            logger.warning("Initial question preload failed. Application will attempt lazy-loading.")
+
         root = tk.Tk()
         
         # Register tkinter-specific exception handler
