@@ -404,6 +404,123 @@ class UserProfileView:
         else:
             tk.Label(results_content, text="No test results yet.", font=("Segoe UI", 10),
                     bg=self.colors.get("card_bg"), fg="gray").pack(anchor="w")
+
+        # =====================
+        # LEFT COLUMN - ROW 2: MANIFESTO (Issue #260)
+        # =====================
+        # Use theme colors instead of hardcoded light blue
+        card_bg = self.colors.get("card_bg")
+        text_primary = self.colors.get("text_primary")
+        accent = self.colors.get("primary", "#3B82F6")
+        
+        manifesto_card = tk.Frame(
+            main_frame, bg=card_bg,
+            highlightbackground=accent,
+            highlightthickness=1
+        )
+        manifesto_card.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=(0, 0), pady=(15, 0))
+        
+        # Header
+        man_header = tk.Frame(manifesto_card, bg=card_bg)
+        man_header.pack(fill="x", padx=20, pady=(15, 5))
+        
+        tk.Label(man_header, text="🌟 My Manifesto (Perspective on Life)", 
+                font=("Segoe UI", 14, "bold"), bg=card_bg, fg=accent).pack(side="left")
+        
+        # Content
+        man_content = tk.Frame(manifesto_card, bg=card_bg)
+        man_content.pack(fill="both", expand=True, padx=25, pady=(0, 20))
+        
+        pov_text = user_data.get("life_pov")
+        if pov_text:
+            # Increased font size and clarity
+            lbl = tk.Label(man_content, text=f'"{pov_text}"', 
+                     font=("Georgia", 15, "italic"), bg=card_bg, fg=text_primary, 
+                     wraplength=700, justify="center")
+            lbl.pack()
+        else:
+            lbl = tk.Label(man_content, text="(Click to define your life philosophy...)", 
+                     font=("Segoe UI", 12, "italic"), bg=card_bg, fg="gray")
+            lbl.pack()
+            
+        # Make clickable to edit
+        for w in [manifesto_card, man_header, man_content, lbl]:
+            w.bind("<Button-1>", lambda e: self._edit_manifesto_custom(user_data.get("life_pov", "")))
+            w.config(cursor="hand2")
+    
+    
+    def _edit_manifesto_custom(self, current_text):
+        """Open custom dialog to edit life manifesto (POV)."""
+        from tkinter import messagebox
+        
+        # Custom Toplevel execution
+        dialog = tk.Toplevel(self.window)
+        dialog.title("My Manifesto")
+        dialog.geometry("600x400")
+        dialog.transient(self.window)
+        dialog.transient(self.window)
+        dialog.grab_set()
+        
+        # Center dialog (inline logic)
+        dialog.update_idletasks()
+        width = 600
+        height = 400
+        x = (self.window.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.window.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f'{width}x{height}+{x}+{y}')
+        
+        # Theme colors
+        bg = self.colors.get("card_bg", "#ffffff")
+        fg = self.colors.get("text_primary", "#000000")
+        accent = self.colors.get("primary", "#3B82F6")
+        
+        dialog.configure(bg=bg)
+        
+        tk.Label(dialog, text="Define your core perspective on life:", 
+                font=("Segoe UI", 12, "bold"), bg=bg, fg=fg).pack(pady=(20, 10))
+                
+        # Text Area
+        text_area = tk.Text(dialog, font=("Georgia", 14), height=8, width=50, 
+                           bg=self.colors.get("bg", "#f5f5f5"), fg=fg, relief="flat", padx=10, pady=10)
+        text_area.pack(padx=20, pady=10, fill="both", expand=True)
+        text_area.insert("1.0", current_text)
+        text_area.focus_set()
+        
+        def save():
+            new_text = text_area.get("1.0", "end-1c").strip()
+            
+            if len(new_text) > 700:
+                messagebox.showwarning("Too Long", "Please keep your manifesto under 700 characters.", parent=dialog)
+                return
+                
+            try:
+                from app.models import PersonalProfile, User
+                session = get_session()
+                user = session.query(User).filter_by(username=self.app.username).first()
+                if user:
+                    if not user.personal_profile:
+                        pp = PersonalProfile(user_id=user.id)
+                        user.personal_profile = pp
+                        session.add(pp)
+                    user.personal_profile.life_pov = new_text
+                    session.commit()
+                    self.on_nav_change("overview")
+                session.close()
+                dialog.destroy()
+            except Exception as e:
+                logging.error(f"Failed to save: {e}")
+                messagebox.showerror("Error", "Failed to save changes.", parent=dialog)
+
+        # Buttons
+        btn_frame = tk.Frame(dialog, bg=bg)
+        btn_frame.pack(fill="x", pady=20, padx=20)
+        
+        tk.Button(btn_frame, text="Cancel", command=dialog.destroy, 
+                 font=("Segoe UI", 10), bg="#e0e0e0", fg="black", relief="flat", padx=15).pack(side="right", padx=5)
+                 
+        tk.Button(btn_frame, text="Save Manifesto", command=save,
+                 font=("Segoe UI", 10, "bold"), bg=accent, fg="white", relief="flat", padx=15).pack(side="right", padx=5)
+
     
     def _load_user_overview_data(self):
         """Load all user data for overview display."""
@@ -441,6 +558,9 @@ class UserProfileView:
                             data["age"] = f"{age}y"
                         except:
                             data["age"] = "--"
+                    
+                    # Issue #260: Load Life Perspective (POV)
+                    data["life_pov"] = pp.life_pov or ""
                 
                 # Medical Profile data
                 if user.medical_profile:
@@ -473,6 +593,49 @@ class UserProfileView:
             logging.error(f"Error loading overview data: {e}")
         
         return data
+    
+    def _edit_manifesto(self, current_text):
+        """Open dialog to edit life manifesto (POV)."""
+        from tkinter import simpledialog, messagebox
+        
+        # Open dialog
+        new_text = simpledialog.askstring(
+            "My Manifesto", 
+            "Define your core perspective on life:",
+            initialvalue=current_text,
+            parent=self.window
+        )
+        
+        if new_text is None:
+            return # Cancelled
+            
+        # Limit length (Edge Case)
+        if len(new_text) > 700:
+            messagebox.showwarning("Too Long", "Please keep your manifesto under 700 characters.")
+            return
+
+        try:
+            from app.models import PersonalProfile, User
+            session = get_session()
+            user = session.query(User).filter_by(username=self.app.username).first()
+            
+            if user:
+                if not user.personal_profile:
+                    # Create if missing (Edge Case)
+                    pp = PersonalProfile(user_id=user.id)
+                    user.personal_profile = pp
+                    session.add(pp)
+                
+                user.personal_profile.life_pov = new_text.strip()
+                session.commit()
+                
+                # Refresh UI
+                self.on_nav_change("overview")
+                
+            session.close()
+        except Exception as e:
+            logging.error(f"Failed to save manifesto: {e}")
+            messagebox.showerror("Error", "Failed to save changes.")
     
     def _upload_profile_photo(self):
         """Open file dialog to select and upload a profile photo."""
