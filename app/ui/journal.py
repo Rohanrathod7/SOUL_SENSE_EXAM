@@ -318,14 +318,11 @@ class JournalFeature:
             
             # 1. Perform Analysis (Heavy)
             sentiment_score = 0.0
-            emotional_patterns = {}
-            
-            if self.analyzer:
-                try:
-                    sentiment_score = self.analyzer.analyze(content)
-                    emotional_patterns = self.analyzer.detect_emotions(content)
-                except Exception as e:
-                    logging.error(f"Analysis failed: {e}")
+            try:
+                sentiment_score = self.analyze_sentiment(content)
+                emotional_patterns = self.extract_emotional_patterns(content)
+            except Exception as e:
+                logging.error(f"Analysis failed: {e}")
                     # Continue saving even if analysis fails slightly
             
             # 2. Database Save
