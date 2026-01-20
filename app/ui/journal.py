@@ -265,6 +265,15 @@ class JournalFeature:
             patterns.append(self.i18n.get("patterns.self_reflective"))
         
         return "; ".join(patterns) if patterns else self.i18n.get("patterns.general_expression")
+
+    def _app_mood_from_score(self, score: float) -> str:
+        """Convert sentiment score to mood string"""
+        if score >= 20:
+            return "Positive"
+        elif score <= -20:
+            return "Negative"
+        else:
+            return "Neutral"
     
     def save_and_analyze(self):
         """Save journal entry and perform AI analysis"""
