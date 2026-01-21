@@ -3,11 +3,13 @@ import os
 import sqlite3
 import logging
 from contextlib import contextmanager
+from typing import Iterator, Dict, Any, Optional, Generator
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.config import DATABASE_URL, DB_PATH
+from app.config import DATABASE_URL, DB_PATH, BASE_DIR
 from app.exceptions import DatabaseError
 
 # Configure logger
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_engine():
+def get_engine() -> Engine:
     return engine
 
 def get_session() -> Session:
@@ -25,7 +27,7 @@ def get_session() -> Session:
     return SessionLocal()
 
 @contextmanager
-def safe_db_context():
+def safe_db_context() -> Generator[Session, None, None]:
     """Context manager for safe database operations"""
     session = SessionLocal()
     try:
@@ -42,7 +44,7 @@ def safe_db_context():
     finally:
         session.close()
 
-def check_db_state():
+def check_db_state() -> bool:
     """Check and create database tables if needed"""
     logger.info("Checking database state...")
     
@@ -76,7 +78,7 @@ def check_db_state():
         create_tables_directly()
         return True
 
-def create_tables_directly():
+def create_tables_directly() -> None:
     """Create tables using direct SQLite"""
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -107,7 +109,16 @@ def create_tables_directly():
                 entry_date TEXT DEFAULT CURRENT_TIMESTAMP,
                 content TEXT,
                 sentiment_score REAL,
-                emotional_patterns TEXT
+                emotional_patterns TEXT,
+                sleep_hours REAL,
+                sleep_quality INTEGER,
+                energy_level INTEGER,
+                work_hours REAL,
+                screen_time_mins INTEGER,
+                stress_level INTEGER,
+                stress_triggers TEXT,
+                daily_schedule TEXT,
+                tags TEXT
             )
         """)
         
@@ -131,17 +142,17 @@ def create_tables_directly():
         raise DatabaseError("Failed to initialize database", original_exception=e)
 
 # Initialize database
-check_db_state()
+# check_db_state()  # DISABLED to prevent side-effects on import
 
 # Backward compatibility
-def get_connection(db_path=None):
+def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     try:
         return sqlite3.connect(db_path or DB_PATH)
     except sqlite3.Error as e:
         logger.error(f"Failed to connect to raw database: {e}", exc_info=True)
         raise DatabaseError("Failed to connect to raw database.", original_exception=e)
 
-def get_user_settings(user_id):
+def get_user_settings(user_id: int) -> Dict[str, Any]:
     """
     Fetch settings for a user.
     Returns a dictionary of settings. Creates defaults if not found.
@@ -179,7 +190,7 @@ def get_user_settings(user_id):
             "language": settings.language
         }
 
-def update_user_settings(user_id, **kwargs):
+def update_user_settings(user_id: int, **kwargs: Any) -> bool:
     """
     Update settings for a user.
     Args:
@@ -188,20 +199,81 @@ def update_user_settings(user_id, **kwargs):
     """
     from app.models import UserSettings
     from datetime import datetime
-    
+
     with safe_db_context() as session:
         settings = session.query(UserSettings).filter_by(user_id=user_id).first()
-        
+
         if not settings:
             settings = UserSettings(user_id=user_id)
             session.add(settings)
-        
+
         # dynamic update
         for key, value in kwargs.items():
             if hasattr(settings, key):
-                setattr(settings, key, value)
-        
-        settings.updated_at = datetime.utcnow().isoformat()
+                setattr(settings, key, value) # type: ignore
+
+        settings.updated_at = datetime.utcnow().isoformat() # type: ignore
         session.commit()
         return True
+
+def delete_user_data(user_id: int) -> bool:
+    """
+    Permanently delete all user data from the database and local storage.
+    This includes the user record and all related data due to cascade delete relationships,
+    as well as local files like avatar images and exported data.
+
+    Args:
+        user_id: ID of the user to delete
+
+    Returns:
+        bool: True if deletion was successful, False otherwise
+    """
+    import os
+    import shutil
+    from app.models import User
+
+    try:
+        with safe_db_context() as session:
+            user = session.query(User).filter_by(id=user_id).first()
+
+            if not user:
+                logger.warning(f"User with ID {user_id} not found for deletion")
+                return False
+
+            username = user.username
+
+            # Delete local files before DB deletion
+            # 1. Delete avatar file
+            avatar_path = None
+            if user.personal_profile and user.personal_profile.avatar_path:
+                avatar_path = user.personal_profile.avatar_path
+                if os.path.exists(avatar_path):
+                    try:
+                        os.remove(avatar_path)
+                        logger.info(f"Deleted avatar file: {avatar_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete avatar file {avatar_path}: {e}")
+
+            # 2. Delete exported files
+            exports_dir = os.path.join(BASE_DIR, "exports")
+            if os.path.exists(exports_dir):
+                for filename in os.listdir(exports_dir):
+                    if filename.startswith(f"{username}_"):
+                        file_path = os.path.join(exports_dir, filename)
+                        try:
+                            os.remove(file_path)
+                            logger.info(f"Deleted exported file: {file_path}")
+                        except Exception as e:
+                            logger.warning(f"Failed to delete exported file {file_path}: {e}")
+
+            # Delete the user - cascade delete will handle all related records
+            session.delete(user)
+            session.commit()
+
+            logger.info(f"Successfully deleted all data for user ID {user_id}")
+            return True
+
+    except Exception as e:
+        logger.error(f"Failed to delete user data for user ID {user_id}: {e}")
+        return False
 

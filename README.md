@@ -42,7 +42,7 @@ Everything you need to know about the **Soul Sense Exam**.
 <tr>
 <td width="65%" valign="top">
 
-<h3>User FAQs</h3>
+### User FAQs
 
 <details>
 <summary><strong>Is this a medical or diagnostic test?</strong></summary>
@@ -94,10 +94,84 @@ You can raise an issue on the GitHub repository or contact the project maintaine
 
 <br>
 <hr>
+
+## 🛠️ Developer Guide (Run Locally)
+
+### 1. Prerequisites
+
+- Python 3.8+
+- [Git](https://git-scm.com/)
+
+### 2. Installation
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/Rohanrathod7/soul-sense-Exam.git
+    cd soul-sense-Exam/SOUL_SENSE_EXAM
+    ```
+
+2.  **Set up a virtual environment (Recommended):**
+
+    ```bash
+    python -m venv venv
+    # Windows
+    .\venv\Scripts\activate
+    # Mac/Linux
+    source venv/bin/activate
+    ```
+
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### 3. Running the Application
+
+- **Desktop GUI (Main App):**
+
+  ```bash
+  python -m app.main
+  ```
+
+- **CLI Version (Terminal Mode):**
+  ```bash
+  python -m app.cli
+  ```
+
+### 4. Running Tests
+
+Run the full test suite to verify your environment:
+
+```bash
+python -m pytest tests/
+```
+
+To run the startup integrity specific tests:
+```bash
+python -m pytest tests/test_startup_checks.py -v
+```
+
+### 5. Git Workflow Commands
+
+If you are contributing to the project, use these common Git commands:
+
+```bash
+git status                # Check which files have changed
+git add .                 # Stage all changes for commit
+git commit -m "feat: description"  # Commit your changes
+git push origin main      # Push changes to your fork/branch
+git fetch origin          # Get latest changes from remote
+git pull origin main      # Update your local branch
+```
+
+<hr>
 <h3>Contributor FAQs</h3>
 
 <details>
 <summary><strong>How do I run this project locally?</strong></summary>
+See the <strong>Developer Guide</strong> section above for full setup instructions.
+</details>
 <br>
 Clone the repo, set up a virtual environment (<code>python -m venv venv</code>), install dependencies with <code>pip install -r requirements.txt</code>, and run <code>python -m app.main</code> to launch the application.
 </details>
@@ -187,7 +261,7 @@ The application is grounded in established emotional intelligence theory (Salove
   - Simple framework for adding more languages
 - **User Authentication System**
   - Secure user registration and login
-  - Password hashing with SHA-256
+  - Password hashing with bcrypt (12 rounds)
   - Session management with logout functionality
   - User-specific data tracking
 - **Outlier Detection & Data Quality**
@@ -207,9 +281,32 @@ The application is grounded in established emotional intelligence theory (Salove
   - User authentication data
 - Backward-compatible database schema migrations
 - Pytest-based test suite with isolated temporary databases
+- **Enhanced User Profile (NEW!)**
+  - **Medical Profile**: Track allergies, conditions, and emergency contacts
+  - **Personal History**: Visual timeline of life events
+  - **Strengths & Goals**: Track personal strengths, learning styles, and aspirations
+  - **Avatar Customization**: Upload and crop profile pictures
 - Daily emotional journal with AI sentiment analysis
 - Emotional pattern tracking and insights
+- **Emotional Patterns Capture (NEW!)** - Define your common emotional states for personalized AI responses
 - View past journal entries and emotional journey
+- **Startup Integrity Checks (NEW!)**
+  - Validates database schema and required files at startup
+  - Auto-recovery for missing directories or corrupted config
+  - User-friendly diagnostic alerts
+- **Database Backup & Restore (NEW!)**
+  - Create timestamped local backups of your data
+  - Restore from any previous backup with safety copy
+  - Manage backups via Settings → Data Backup
+- **Loading States for Long Operations (NEW!)**
+  - Visual feedback during PDF export, AI analysis, and data export
+  - Animated loading overlay prevents user confusion
+  - Automatic cleanup on completion or error
+- **Delete My Data (NEW!)**
+  - Permanently delete all your personal data from the application
+  - Two-step confirmation dialog for safety
+  - Removes all user records, profiles, journals, settings, and local files
+  - Accessible via Profile → Settings → Data Management
 
 ---
 
@@ -230,6 +327,38 @@ The journal feature allows users to:
 - **Emotional Tracking:** Monitors emotional trends over time
 
 The journal feature is informed by research on expressive writing and emotional processing (Pennebaker, 1997; Smyth, 1998), which demonstrates the therapeutic benefits of written emotional expression. The AI sentiment analysis uses natural language processing techniques validated in computational psychology research (Calvo & D'Mello, 2010).
+
+---
+
+## 💭 Emotional Patterns Feature (Issue #269)
+
+Allows users to describe their common emotional states, enabling more personalized and empathetic AI responses.
+
+### How to Use
+
+1. Navigate to **Profile → Strengths & Goals**
+2. Scroll to the **"Emotional Profile"** section
+3. Fill in your details:
+   - **Common Emotional States**: Select or type emotions you often experience (e.g., Anxiety, Stress, Calmness)
+   - **Emotional Triggers**: Describe what causes these emotions
+   - **Coping Strategies**: Your personal methods for managing emotions
+   - **Preferred AI Support Style**: How you want the AI to respond to you
+
+### AI Support Styles
+
+| Style | Response Approach |
+|-------|-------------------|
+| **Encouraging & Motivating** | "You've got this! You've handled tough days before." |
+| **Problem-Solving & Practical** | "Here's an action item to try today..." |
+| **Just Listen & Validate** | "It's okay to feel this way. Take your time." |
+| **Distraction & Positivity** | "Fun idea: Take a 5-min break and do something you enjoy!" |
+
+### Integration
+
+When you write journal entries, the AI will:
+- Detect if your current emotional state matches your defined patterns
+- Personalize responses based on your preferred support style
+- Provide relevant coping suggestions from your profile
 
 ---
 
@@ -318,6 +447,156 @@ Based on sentiment ranges:
    - Top influencing factors
    - Personalized recommendations based on both EQ and sentiment
 3. **Journal Analytics**: Tracks sentiment trends over time (when using Daily Journal)
+
+---
+
+## 🛡️ Startup Integrity Checks
+
+SoulSense includes a self-diagnostic system that runs every time the application starts to ensure a stable environment.
+
+### What it Validates
+
+| Check | Description | Auto-Recovery |
+|-------|-------------|---------------|
+| **Config Integrity** | Validates `config.json` structure and keys. | Restores defaults if missing or corrupt. |
+| **Required Files** | Ensures `data/`, `logs/`, and `models/` exist. | Auto-creates missing directories. |
+| **Database Schema** | Verifies all required tables and columns. | Re-initializes schema if tables are missing. |
+
+### How it Works
+
+The system categorizes issues into:
+- **Warnings**: Non-critical issues that were auto-recovered. The app notifies the user and proceeds.
+- **Failures**: Critical issues that prevent the app from starting safely. The app shows a detailed error and exits gracefully.
+
+This prevents common "ModuleNotFoundError" or "DatabaseError" crashes that users might encounter due to filesystem issues.
+
+---
+
+## 💾 Database Backup & Restore
+
+SoulSense allows you to create and restore local backups of your data, protecting against accidental data loss.
+
+### Features
+
+- **Create Backups**: Snapshot your database with optional description
+- **Restore Backups**: Return to any previous backup state
+- **Safety Copy**: Automatic safety backup before restoration
+- **Manage Backups**: View, list, and delete old backups
+
+### How to Use
+
+1. Navigate to **Settings** in the profile sidebar
+2. Scroll to **"Data Backup"** section
+3. Click **"💾 Manage Backups"**
+4. Create new backups or restore from existing ones
+
+### Backup Storage
+
+Backups are stored in `data/backups/` with timestamped filenames:
+```
+soulsense_backup_20260120_001500_my_description.db
+```
+
+---
+
+## ⚙️ Environment Configuration
+
+SoulSense supports configuration via environment variables with the `SOULSENSE_*` prefix.
+
+### Quick Setup
+
+1. **Copy the example file:**
+   ```bash
+   copy .env.example .env
+   ```
+
+2. **Edit `.env`** to customize settings (optional)
+
+### Supported Variables
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SOULSENSE_ENV` | string | `development` | Environment mode (development/production/test) |
+| `SOULSENSE_DEBUG` | bool | `false` | Enable debug logging |
+| `SOULSENSE_LOG_LEVEL` | string | `INFO` | Log level (DEBUG/INFO/WARNING/ERROR) |
+| `SOULSENSE_DB_PATH` | string | `data/soulsense.db` | Custom database file path |
+| `SOULSENSE_ENABLE_JOURNAL` | bool | `true` | Enable/disable journal feature |
+| `SOULSENSE_ENABLE_ANALYTICS` | bool | `true` | Enable/disable analytics feature |
+
+### Configuration Priority
+
+1. **Environment variables** (highest priority)
+2. **`.env` file** (loaded automatically if present)
+3. **`config.json`** file
+4. **Built-in defaults** (lowest priority)
+
+> **Note:** No configuration is required for normal usage. The application works out-of-the-box with sensible defaults.
+
+---
+
+## 🧪 Experimental Feature Flags
+
+SoulSense includes a feature flag system for controlling experimental and beta features. This allows you to enable cutting-edge functionality before it becomes generally available.
+
+### Available Flags
+
+| Flag | Environment Variable | Description |
+|------|---------------------|-------------|
+| `ai_journal_suggestions` | `SOULSENSE_FF_AI_JOURNAL_SUGGESTIONS` | AI-powered suggestions in the journal |
+| `advanced_analytics` | `SOULSENSE_FF_ADVANCED_ANALYTICS` | Predictive insights in analytics dashboard |
+| `beta_ui_components` | `SOULSENSE_FF_BETA_UI_COMPONENTS` | Experimental UI layouts and components |
+| `ml_emotion_detection` | `SOULSENSE_FF_ML_EMOTION_DETECTION` | ML-based emotion detection from text |
+| `data_export_v2` | `SOULSENSE_FF_DATA_EXPORT_V2` | New export formats (PDF, enhanced CSV) |
+
+### Enabling a Feature
+
+**Option 1: Environment Variable** (recommended for testing)
+```bash
+set SOULSENSE_FF_AI_JOURNAL_SUGGESTIONS=true
+python -m app.main
+```
+
+**Option 2: `.env` File**
+```bash
+SOULSENSE_FF_AI_JOURNAL_SUGGESTIONS=true
+```
+
+**Option 3: `config.json`**
+```json
+{
+    "experimental": {
+        "ai_journal_suggestions": true
+    }
+}
+```
+
+**Option 3:  `Direct`**
+```bash
+Turn on
+$env:SOULSENSE_FF_AI_JOURNAL_SUGGESTIONS = "true"
+Turn Off
+$env:SOULSENSE_FF_AI_JOURNAL_SUGGESTIONS = "false"
+python -m app.main
+```
+
+### Python API for Developers
+
+```python
+from app.feature_flags import feature_flags, feature_gated
+
+# Check if a flag is enabled
+if feature_flags.is_enabled("ai_journal_suggestions"):
+    # Use experimental feature
+    pass
+
+# Use decorator to gate entire functions
+@feature_gated("ml_emotion_detection")
+def detect_emotions(text):
+    # Only runs if flag is enabled
+    return model.predict(text)
+```
+
+> **Warning:** Experimental features may change or be removed without notice.
 
 ---
 
@@ -445,15 +724,15 @@ pip install -r requirements.txt -->
 
 ## ▶️ How to Run
 
-### 1. Database Setup
+### 1. Unified Setup
 
-Ensure your database schema is up to date:
+Initialize database, seed data, and run all feature migrations in one step:
 
 ```bash
-python -m alembic upgrade head
+python -m scripts.setup_dev
 ```
 
-### 2. Start the Application
+### 4. Start the Application
 
 Launch the SoulSense interface:
 
@@ -509,7 +788,8 @@ python -m app.main
 
 **Security Features:**
 
-- Passwords are hashed using SHA-256 encryption
+- Passwords are hashed using bcrypt with 12 rounds
+- Legacy SHA-256 passwords are automatically upgraded on login
 - User sessions are managed securely
 - Each user's data is isolated and protected
 
@@ -560,6 +840,45 @@ python -m alembic revision --autogenerate -m "describe_change"
 
 **Verify Migrations:**
 Our test suite includes `tests/test_migrations.py` which guarantees that migrations apply correctly to a fresh database.
+
+### 4. Test Fixtures (Issue #348)
+
+SoulSense provides a comprehensive test fixture system for standardized, reusable test data.
+
+**Available Fixtures:**
+
+| Category | Fixtures |
+|----------|----------|
+| **Database Entities** | `sample_user`, `sample_user_with_profiles`, `sample_score`, `sample_responses`, `sample_journal_entry`, `sample_question_bank` |
+| **ML Components** | `sample_user_features`, `sample_clustered_features`, `mock_clusterer`, `mock_feature_extractor`, `mock_risk_predictor` |
+| **Utilities** | `temp_db` (isolated database), `isolated_db`, `populated_db` |
+
+**Factory Classes:**
+
+```python
+from tests.fixtures import UserFactory, ScoreFactory, FeatureDataFactory
+
+# Create test user with all profiles
+user = UserFactory.create_with_profiles(session)
+
+# Create batch of scores
+scores = ScoreFactory.create_batch(session, user, count=10)
+
+# Generate ML feature data
+features = FeatureDataFactory.create_user_features(n_users=50)
+```
+
+**Using Fixtures in Tests:**
+
+```python
+def test_user_scores(temp_db, sample_user):
+    """Fixtures are automatically available to all tests."""
+    from tests.fixtures import ScoreFactory
+    scores = ScoreFactory.create_batch(temp_db, sample_user, count=5)
+    assert len(scores) == 5
+```
+
+For complete documentation, see [tests/FIXTURES.md](tests/FIXTURES.md).
 
 ---
 

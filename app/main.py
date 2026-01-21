@@ -1,714 +1,616 @@
-﻿import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+
+import tkinter as tk
+from tkinter import messagebox, ttk
 import logging
-import threading
-import time
-from datetime import datetime
-import json
-import webbrowser
-import os
-import sys
-import random # For random tips
-from app.ui.styles import UIStyles, ColorSchemes
-from app.ui.auth import AuthManager
+import signal
+import atexit
+from app.ui.sidebar import SidebarNav
+from app.ui.styles import UIStyles
+from app.ui.dashboard import AnalyticsDashboard
+from app.ui.journal import JournalFeature
+from app.ui.profile import UserProfileView
 from app.ui.exam import ExamManager
-from app.ui.results import ResultsManager
-from app.ui.settings import SettingsManager
+from app.auth import AuthManager
 from app.i18n_manager import get_i18n
-
-# NLTK (optional) - import defensively so app can run without it
-try:
-    import nltk
-    from nltk.sentiment import SentimentIntensityAnalyzer
-    SENTIMENT_AVAILABLE = True
-except Exception:
-    SENTIMENT_AVAILABLE = False
-    SentimentIntensityAnalyzer = None
-import traceback # Keep this, it was in the original and not explicitly removed
-
-from app.db import get_session, get_connection
-from app.config import APP_CONFIG
-from app.constants import BENCHMARK_DATA
-from app.models import User, Score, Response, Question
-from app.exceptions import DatabaseError, ValidationError, AuthenticationError, APIConnectionError, SoulSenseError, ResourceError
-from app.logger import setup_logging
-from app.analysis.data_cleaning import DataCleaner
-from app.utils import load_settings, save_settings, compute_age_group
 from app.questions import load_questions
-
-# Try importing bias checker (optional)
-try:
-    from scripts.check_gender_bias import SimpleBiasChecker
-except ImportError:
-    SimpleBiasChecker = None
-
-# Try importing optional features
-try:
-    from app.ui.journal import JournalFeature
-except ImportError:
-    logging.warning("Could not import JournalFeature")
-    JournalFeature = None
-
-try:
-    from app.ml.predictor import SoulSenseMLPredictor
-except ImportError:
-    logging.warning("Could not import SoulSenseMLPredictor")
-    SoulSenseMLPredictor = None
-
-try:
-    from app.ui.dashboard import AnalyticsDashboard
-except ImportError:
-    logging.warning("Could not import AnalyticsDashboard")
-    AnalyticsDashboard = None
-
-# Ensure VADER lexicon is downloaded when NLTK is available
-if SENTIMENT_AVAILABLE:
-    try:
-        nltk.data.find('sentiment/vader_lexicon.zip')
-    except LookupError:
-        try:
-            nltk.download('vader_lexicon', quiet=True)
-        except Exception:
-            # If download fails, continue without sentiment functionality
-            SENTIMENT_AVAILABLE = False
-
-# ---------------- LOGGING SETUP ----------------
-setup_logging()
-
-def show_error(title, message, error_obj=None):
-    """
-    Display a friendly error message to the user and ensure it's logged.
-    """
-    if error_obj:
-        logging.error(f"{title}: {message} | Error: {error_obj}", exc_info=(type(error_obj), error_obj, error_obj.__traceback__) if hasattr(error_obj, '__traceback__') else True)
-    else:
-        logging.error(f"{title}: {message}")
-    
-    # Show UI dialog
-    try:
-        messagebox.showerror(title, f"{message}\n\nDetails have been logged." if error_obj else message)
-    except Exception:
-        # Fallback if UI fails
-        print(f"CRITICAL UI ERROR: {title} - {message}", file=sys.stderr)
-
-def global_exception_handler(self, exc, val, tb):
-    """
-    Global exception handler for Tkinter callbacks.
-    Catches unhandled errors, logs them, and shows a friendly dialog.
-    """
-    logging.critical("Unhandled exception in GUI", exc_info=(exc, val, tb))
-    
-    title = "Unexpected Error"
-    message = "An unexpected error occurred."
-    
-    # Handle custom exceptions nicely
-    if isinstance(val, SoulSenseError):
-        title = "Application Error"
-        message = str(val)
-    elif isinstance(val, tk.TclError):
-        title = "Interface Error"
-        message = "A graphical interface error occurred."
-    
-    show_error(title, message)
-
-# Hook into Tkinter's exception reporting
-tk.Tk.report_callback_exception = global_exception_handler
-
-# ---------------- SETTINGS ----------------
-# Imported from app.utils
-
-
-
-
-
-# ---------------- LOGGING ----------------
-logging.basicConfig(
-    filename="logs/soulsense.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+from app.ui.assessments import AssessmentHub
+from app.startup_checks import run_all_checks, get_check_summary, CheckStatus
+from app.exceptions import IntegrityError
+from app.logger import get_logger, setup_logging
+from app.error_handler import (
+    get_error_handler,
+    setup_global_exception_handlers,
+    ErrorSeverity,
 )
+from typing import Optional, Dict, Any, List
+from app.db import get_session
 
-logging.info("Application started")
-
-# ---------------- DB INIT ----------------
-conn = get_connection()
-cursor = conn.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT,
-    total_score INTEGER,
-    age INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-""")
-
-conn.commit()
-
-# ---------------- LOAD QUESTIONS FROM DB ----------------
-try:
-    rows = load_questions()  # [(id, text, tooltip, min_age, max_age)]
-    # Store (text, tooltip) tuple
-    all_questions = [(q[1], q[2]) for q in rows]
-    
-    if not all_questions:
-        raise ResourceError("Question bank empty: No questions found in database.")
-
-    logging.info("Loaded %s total questions from DB", len(all_questions))
-
-except Exception as e:
-    show_error("Fatal Error", "Question bank could not be loaded.\nThe application cannot start.", e)
-    sys.exit(1)
-
-# ---------------- GUI ----------------
 class SoulSenseApp:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("Soul Sense EQ Test")
-        self.root.geometry("800x700")  # Increased size for better layout
+        self.root.title("SoulSense AI - Mental Wellbeing")
+        self.root.geometry("1400x900")
         
-        # Initialize I18n Manager
+        # Initialize Logger (use centralized logger)
+        self.logger = get_logger(__name__)
+        
+        # Initialize Styles
+        self.ui_styles = UIStyles(self)
+        self.colors: Dict[str, str] = {} # Will be populated by apply_theme
+        self.ui_styles.apply_theme("dark") # Default theme
+        
+        # Fonts
+        self.fonts = {
+            "h1": ("Segoe UI", 24, "bold"),
+            "h2": ("Segoe UI", 20, "bold"),
+            "h3": ("Segoe UI", 16, "bold"),
+            "body": ("Segoe UI", 12),
+            "small": ("Segoe UI", 10)
+        }
+        
+        # State
+        self.username: Optional[str] = None # Set after login
+        self.current_user_id: Optional[int] = None
+        self.age = 25
+        self.age_group = "adult"
         self.i18n = get_i18n()
+        self.questions = []
+        self.auth = AuthManager()
+        self.settings: Dict[str, Any] = {} 
         
-        # Initialize Styles Manager
-        self.styles = UIStyles(self)
-        self.auth = AuthManager(self)
-        self.exam = ExamManager(self)
-        self.results = ResultsManager(self)
-        self.settings_manager = SettingsManager(self)
-        
-        # Initialize ML Predictor
-
+        # Load Questions
         try:
-            from app.ml.risk_predictor import RiskPredictor
-            self.ml_predictor = RiskPredictor()
-            logging.info("ML Predictor initialized successfully")
+            self.questions = load_questions()
         except Exception as e:
-            logging.error(f"Failed to initialize ML Predictor: {e}")
-            self.ml_predictor = None
+            self.logger.error(f"Failed to load questions: {e}")
+            messagebox.showerror("Error", f"Could not load questions: {e}")
+        
+        # --- UI Layout ---
+        self.main_container = tk.Frame(self.root, bg=self.colors["bg"])
+        self.main_container.pack(fill="both", expand=True)
+        
+        # Sidebar (Initialized but hidden until login)
+        # Sidebar (Initialized but hidden until login)
+        self.sidebar = SidebarNav(self.main_container, self, [
+            {"id": "home", "label": "Home", "icon": "🏠"},
+            {"id": "exam", "label": "Assessment", "icon": "🧠"},
+            {"id": "dashboard", "label": "Dashboard", "icon": "📊"},
+            {"id": "journal", "label": "Journal", "icon": "📝"},
+            {"id": "assessments", "label": "Deep Dive", "icon": "🔍"},
+            {"id": "history", "label": "History", "icon": "�"}, # Replaces Profile
+        ], on_change=self.switch_view)
+        # self.sidebar.pack(side="left", fill="y") # Don't pack yet
+        
+        # Content Area
+        self.content_area = tk.Frame(self.main_container, bg=self.colors["bg"])
+        self.content_area.pack(side="right", fill="both", expand=True)
+        
+        # Initialize Features
+        self.exam_manager = None 
+        
+        # Start Login Flow
+        self.root.after(100, self.show_login_screen)
 
-        # Initialize Journal Feature
-        if JournalFeature:
-            self.journal_feature = JournalFeature(self.root, self)
-        else:
-            self.journal_feature = None
-            logging.warning("JournalFeature disabled: Module could not be imported")
+    def show_login_screen(self) -> None:
+        """Show login popup on startup"""
+        login_win = tk.Toplevel(self.root)
+        login_win.title("SoulSense Login")
+        login_win.geometry("400x500")
+        login_win.configure(bg=self.colors["bg"])
+        login_win.transient(self.root)
+        login_win.grab_set()
+        
+        # Prevent closing without login
+        login_win.protocol("WM_DELETE_WINDOW", lambda: self.root.destroy())
+        
+        # Center
+        login_win.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 500) // 2
+        login_win.geometry(f"+{x}+{y}")
 
-
-
-        # Load settings
-        self.settings = load_settings()
+        # Logo/Title
+        tk.Label(login_win, text="SoulSense AI", font=("Segoe UI", 24, "bold"), 
+                 bg=self.colors["bg"], fg=self.colors["primary"]).pack(pady=(40, 10))
         
-        # Define color schemes using premium design system
-        # Start with the base schemes from styles module
-        self.color_schemes = {
-            "light": {
-                **ColorSchemes.LIGHT,
-                "chart_bg": "#FFFFFF",
-                "chart_fg": "#0F172A",
-                "improvement_good": "#10B981",
-                "improvement_bad": "#EF4444",
-                "improvement_neutral": "#F59E0B",
-                "excellent": "#3B82F6",
-                "good": "#10B981",
-                "average": "#F59E0B",
-                "needs_work": "#EF4444",
-                "benchmark_better": "#10B981",
-                "benchmark_worse": "#EF4444",
-                "benchmark_same": "#F59E0B"
-            },
-            "dark": {
-                **ColorSchemes.DARK,
-                "chart_bg": "#1E293B",
-                "chart_fg": "#F8FAFC",
-                "improvement_good": "#34D399",
-                "improvement_bad": "#F87171",
-                "improvement_neutral": "#FBBF24",
-                "excellent": "#60A5FA",
-                "good": "#34D399",
-                "average": "#FBBF24",
-                "needs_work": "#F87171",
-                "benchmark_better": "#34D399",
-                "benchmark_worse": "#F87171",
-                "benchmark_same": "#FBBF24"
-            }
-        }
+        tk.Label(login_win, text="Login to continue", font=("Segoe UI", 12), 
+                 bg=self.colors["bg"], fg=self.colors["text_secondary"]).pack(pady=(0, 30))
         
-        # Apply theme
-        self.apply_theme(self.settings.get("theme", "light"))
+        # Form
+        entry_frame = tk.Frame(login_win, bg=self.colors["bg"])
+        entry_frame.pack(fill="x", padx=40)
         
-        # Test variables
-        self.username = ""
-        self.age = None
-        self.age_group = None
-        self.profession = None
+        tk.Label(entry_frame, text="Username", font=("Segoe UI", 10, "bold"), 
+                 bg=self.colors["bg"], fg=self.colors["text_primary"]).pack(anchor="w")
+        username_entry = tk.Entry(entry_frame, font=("Segoe UI", 12))
+        username_entry.pack(fill="x", pady=(5, 15))
         
-        # Initialize Sentiment Variables
-        self.sentiment_score = 0.0 
-        self.reflection_text = ""
+        tk.Label(entry_frame, text="Password", font=("Segoe UI", 10, "bold"), 
+                 bg=self.colors["bg"], fg=self.colors["text_primary"]).pack(anchor="w")
+        password_entry = tk.Entry(entry_frame, font=("Segoe UI", 12), show="*")
+        password_entry.pack(fill="x", pady=(5, 20))
         
-        # Initialize Sentiment Analyzer
-        try:
-            self.sia = SentimentIntensityAnalyzer()
-            logging.info("SentimentIntensityAnalyzer initialized successfully")
-        except Exception as e:
-            logging.error(f"Failed to initialize SentimentIntensityAnalyzer: {e}")
-            self.sia = None
-
-        logging.error("\n\n>>> APP INITIALIZED V2.1 <<<\n")
-        self.current_question = 0
-        self.responses = []
-        self.current_score = 0
-        self.current_max_score = 0
-        self.current_percentage = 0
-        
-        # Load questions based on settings
-        question_count = self.settings.get("question_count", 10)
-        self.questions = all_questions[:min(question_count, len(all_questions))]
-        logging.info("Using %s questions based on settings", len(self.questions))
-        
-        self.total_questions_count = len(all_questions)
-        
-        # User State
-        self.current_user_id = None
-        self.username = ""
-        self.age = None
-        self.age_group = None
-        self.profession = None
-        
-        self.profile_view = None # Singleton reference
-        
-        self.create_welcome_screen()
-
-    def offer_satisfaction_survey(self):
-        """Offer satisfaction survey after test completion"""
-        # Only show if user has taken EQ test recently
-        if not self.username or not self.current_score:
-            return
-    
-        # Ask user if they want to take satisfaction survey
-        response = messagebox.askyesno(
-            "Career/Academic Insights",
-            "Would you like to complete a brief survey about your work/study satisfaction?\n\n"
-            "This helps provide personalized career/academic guidance."
-        )
-    
-        if response:
-            try:
-                from app.ui.satisfaction import SatisfactionSurvey
-                # Get latest score ID
-                session = get_session()
-                try:
-                    latest_score = session.query(Score).filter(
-                        Score.username == self.username
-                    ).order_by(Score.id.desc()).first()
-                
-                    eq_score_id = latest_score.id if latest_score else None
-                
-                    # Show survey
-                    survey = SatisfactionSurvey(
-                        parent=self.root,
-                        username=self.username,
-                        user_id=self.current_user_id,
-                        eq_score_id=eq_score_id,
-                        language=self.settings.get("language", "en")
-                    )
-                    survey.show()
-                
-                finally:
-                    session.close()
-            except Exception as e:
-                logging.error(f"Failed to show satisfaction survey: {e}")
-    # ... (other methods) ...
-
-    def open_profile_flow(self):
-        """Open User Profile (Medical + Settings)"""
-        if not self.username:
-             messagebox.showwarning("Login Required", "Please enter your name first.")
-             return
-
-        # Check existing window
-        if self.profile_view and self.profile_view.window.winfo_exists():
-            self.profile_view.window.lift()
-            self.profile_view.window.focus_force()
-            return
-
-        try:
-            from app.ui.profile import UserProfileView
-            self.profile_view = UserProfileView(self.root, self)
-        except Exception as e:
-            logging.error(f"Failed to open profile: {e}")
-            messagebox.showerror("Error", f"Profile module could not be loaded: {e}")
-
-    def load_user_settings(self, user_id):
-        """Load and apply settings for specific user"""
-        from app.db import get_user_settings
-        
-        self.current_user_id = user_id
-        user_settings = get_user_settings(user_id)
-        
-        # Update current settings
-        self.settings.update(user_settings)
-        logging.info(f"Loaded settings for user {user_id}: {user_settings}")
-        
-        # Apply immediate effects
-        self.apply_theme(self.settings.get("theme", "light"))
-        
-        # Reload questions if count changed
-        q_count = self.settings.get("question_count", 10)
-        self.reload_questions(q_count)
-        
-        return user_settings
-
-    def reload_questions(self, count):
-        """Reload questions based on new settings count"""
-        self.questions = all_questions[:min(count, len(all_questions))]
-        logging.info("Reloaded %s questions based on settings", len(self.questions))
-
-    def apply_theme(self, theme_name):
-        """Apply the selected theme to the application"""
-        # Call styles first (may set colors internally)
-        self.styles.apply_theme(theme_name)
-        # Override with our complete color_schemes (includes chart colors)
-        self.colors = self.color_schemes.get(theme_name, self.color_schemes["light"])
-
-    def toggle_tooltip(self, event, text):
-        """Toggle tooltip visibility on click/enter"""
-        self.styles.toggle_tooltip(event, text)
-
-    def create_widget(self, widget_type, *args, **kwargs):
-        """Create a widget with current theme colors"""
-        return self.styles.create_widget(widget_type, *args, **kwargs)
-
-    def darken_color(self, color):
-        """Darken a color for active button state"""
-        return self.styles.darken_color(color)
-
-
-
-    def logout_user(self):
-        """Logout current user and reset to defaults"""
-        logging.info(f"User {self.username} logged out")
-        
-        # Reset State
-        self.current_user_id = None
-        self.username = ""
-        self.age = None
-        self.age_group = None
-        self.profession = None
-        
-        # Reset Settings to Defaults
-        self.settings = {
-            "question_count": 10,
-            "theme": "light",
-            "sound_effects": True
-        }
-        
-        # Apply Defaults
-        self.apply_theme("light")
-        self.reload_questions(10)
-        
-        # Refresh UI
-        self.create_welcome_screen()
-
-    def create_welcome_screen(self):
-        """Create initial welcome screen with settings option"""
-        self.auth.create_welcome_screen()
-        
-        # Login / Logout Button (HEADER)
-        header_frame = self.create_widget(tk.Frame, self.root)
-        header_frame.pack(fill="x", padx=20, pady=(10, 0))
-        
-        if self.current_user_id:
-            auth_text = "Logout"
-            auth_cmd = self.logout_user
-            auth_bg = "#EF4444" # Red
-            auth_fg = "white"
-        else:
-            auth_text = "Login"
-            auth_cmd = self.open_login_screen
-            auth_bg = "#3B82F6" # Blue
-            auth_fg = "white"
+        def do_login():
+            user = username_entry.get().strip()
+            pwd = password_entry.get().strip()
             
-        auth_btn = self.create_widget(
-            tk.Button,
-            header_frame,
-            text=auth_text,
-            command=auth_cmd,
-            font=("Arial", 10, "bold"),
-            width=10,
-            bg=auth_bg,
-            fg=auth_fg
-        )
-        auth_btn.pack()
+            if not user or not pwd:
+                messagebox.showerror("Error", "Please enter username and password")
+                return
+                
+            success, msg = self.auth.login_user(user, pwd)
+            if success:
+                self.username = user
+                # Load User Settings from DB
+                self._load_user_settings(user)
+                login_win.destroy()
+                self._post_login_init()
+            else:
+                messagebox.showerror("Login Failed", msg)
         
-        # Title
-        title = self.create_widget(
-            tk.Label,
-            self.root,
-            text="Soul Sense EQ",
-            font=("Arial", 22, "bold")
-        )
-        title.pack(pady=20)
-        
-        # User Welcome / Description
-        if self.current_user_id:
-            welcome_text = f"Welcome back, {self.username}!"
-            desc_text = "Ready to continue your journey?"
-        else:
-            welcome_text = "Assess your Emotional Intelligence"
-            desc_text = "with our comprehensive questionnaire"
-            
-        welcome_label = self.create_widget(
-            tk.Label,
-            self.root,
-            text=welcome_text,
-            font=("Arial", 14, "bold" if self.current_user_id else "normal")
-        )
-        welcome_label.pack(pady=(10, 5))
-        
-        desc = self.create_widget(
-            tk.Label,
-            self.root,
-            text=desc_text,
-            font=("Arial", 12)
-        )
-        desc.pack(pady=5)
-        
-        # Current settings display
-        settings_frame = self.create_widget(tk.Frame, self.root)
-        settings_frame.pack(pady=20)
-        
-        settings_label = self.create_widget(
-            tk.Label,
-            settings_frame,
-            text="Current Settings:",
-            font=("Arial", 11, "bold")
-        )
-        settings_label.pack()
-        
-        settings_text = self.create_widget(
-            tk.Label,
-            settings_frame,
-            text=f"\u2022 Questions: {len(self.questions)}\n" +
-                 f"\u2022 Theme: {self.settings.get('theme', 'light').title()}\n" +
-                 f"\u2022 Sound: {'On' if self.settings.get('sound_effects', True) else 'Off'}",
-            font=("Arial", 10),
-            justify="left"
-        )
-        settings_text.pack(pady=5)
-        
+        def do_register():
+            user = username_entry.get().strip()
+            pwd = password_entry.get().strip()
+             
+            if not user or not pwd:
+                 messagebox.showerror("Error", "Please enter username and password")
+                 return
+                 
+            success, msg = self.auth.register_user(user, pwd)
+            if success:
+                messagebox.showinfo("Success", "Account created! You can now login.")
+            else:
+                messagebox.showerror("Registration Failed", msg)
+
         # Buttons
-        button_frame = self.create_widget(tk.Frame, self.root)
-        button_frame.pack(pady=10) # Reduced padding
-        
+        tk.Button(login_win, text="Login", command=do_login,
+                 font=("Segoe UI", 12, "bold"), bg=self.colors["primary"], fg="white",
+                 width=20).pack(pady=10)
+                 
+        tk.Button(login_win, text="Create Account", command=do_register,
+                 font=("Segoe UI", 10), bg=self.colors["bg"], fg=self.colors["primary"],
+                 bd=0, cursor="hand2").pack()
 
-        
-
-
-    def on_start_test_click(self):
-        """Handle start test click dynamically checking auth status"""
-        logging.error(f"\n\n>>> DEBUG: Start Test Clicked! (New Handler)")
-        logging.error(f">>> DEBUG: self.current_user_id = {self.current_user_id}")
-        
-        if self.current_user_id:
-            logging.error(">>> DEBUG: GOING TO EXAM")
-            self.start_test()
-        else:
-            logging.error(">>> DEBUG: GOING TO FORM (ID Missing)")
-            self.create_username_screen(callback=self.create_welcome_screen)
-
-    def show_history_screen(self):
-        """Display history screen using ResultsManager"""
-        self.results_manager.show_history_screen()
-        
-
-
-    def open_login_screen(self):
-        """Safely open login screen with error handling"""
-        print("DEBUG: Opening Login Screen...")
+    def _load_user_settings(self, username: str) -> None:
+        """Load settings from DB for user"""
         try:
-            # We must pass the callback to return here
-            self.create_username_screen(callback=self.create_welcome_screen)
-        except Exception as e:
-            logging.error(f"Failed to open login screen: {e}", exc_info=True)
-            messagebox.showerror("Login Error", f"Could not open login screen: {e}")
-
-    def open_journal_flow(self):
-        """Handle journal access, prompting for name if needed"""
-        if not self.username:
-            name = simpledialog.askstring("Journal Access", "Please enter your name to access your journal:", parent=self.root)
-            if name and name.strip():
-                self.username = name.strip()
-            else:
-                return
-        
-        self.journal_feature.open_journal_window(self.username)
-
-    def open_dashboard_flow(self):
-        """Handle dashboard access, prompting for name if needed"""
-        if not self.username:
-            name = simpledialog.askstring("Dashboard Access", "Please enter your name to view your dashboard:", parent=self.root)
-            if name and name.strip():
-                self.username = name.strip()
-            else:
-                return
-        
-        if AnalyticsDashboard:
-            dashboard = AnalyticsDashboard(self.root, self.username, self.colors, self.current_theme)
-            dashboard.open_dashboard()
-        else:
-            messagebox.showerror("Error", "Dashboard component could not be loaded")
-
-    def open_correlation_flow(self):
-        """Handle correlation analysis access"""
-        if not self.username:
-            name = simpledialog.askstring("Correlation Analysis", "Please enter your name:", parent=self.root)
-            if name and name.strip():
-                self.username = name.strip()
-            else:
-                return
-        
-        try:
-            from app.ui.correlation import CorrelationTab
-            correlation = CorrelationTab(self.root, self)
-            correlation.show()
-        except ImportError:
-            messagebox.showerror("Error", "Correlation analysis component could not be loaded")
-
-    def run_bias_check(self):
-        """Quick bias check after test completion"""
-        if not SimpleBiasChecker:
-            return
-
-        try:
-            checker = SimpleBiasChecker()
-            bias_result = checker.check_age_bias()
+            from app.db import get_session
+            from app.models import User
             
-            if bias_result.get('status') == 'potential_bias':
-                # Log bias warning
-                logging.warning(f"Potential age bias detected: {bias_result}")
+            session = get_session()
+            user_obj = session.query(User).filter_by(username=username).first()
+            if user_obj:
+                self.current_user_id = int(user_obj.id)
+                if user_obj.settings:
+                    self.settings = {
+                        "theme": user_obj.settings.theme,
+                        "question_count": user_obj.settings.question_count,
+                        "sound_enabled": user_obj.settings.sound_enabled
+                    }
+                    # Apply Theme immediately
+                    if self.settings.get("theme"):
+                        self.apply_theme(self.settings["theme"])
+            session.close()
+        except Exception as e:
+            self.logger.error(f"Error loading settings: {e}")
+
+    def _post_login_init(self) -> None:
+        """Initialize UI after login"""
+        if hasattr(self, 'sidebar'):
+            self.sidebar.update_user_info()
+            self.sidebar.pack(side="left", fill="y")
+            # Select Home to trigger view and visual update
+            self.sidebar.select_item("home") # This triggers on_change -> switch_view, which is fine for init
+        else:
+            self.switch_view("home")
+
+    def apply_theme(self, theme_name: str) -> None:
+        """Update colors based on theme"""
+        # Delegate to UIStyles manager
+        self.ui_styles.apply_theme(theme_name)
+        
+        # Refresh current view
+        # A full restart might be best, but we'll try to update existing frames
+        self.main_container.configure(bg=self.colors["bg"])
+        self.content_area.configure(bg=self.colors["bg"])
+        
+        # Update Sidebar
+        if hasattr(self, 'sidebar'):
+            self.sidebar.update_theme()
+            
+        # Refresh current content (re-render)
+        # This is strictly necessary to apply new colors to inner widgets
+        # We can implement a specific update hook or just switch view (reloads it)
+        # Determine current view from sidebar if possible, or track it.
+        if hasattr(self, 'current_view') and self.current_view:
+             self.switch_view(self.current_view)
+        elif hasattr(self, 'sidebar') and self.sidebar.active_id:
+             self.switch_view(self.sidebar.active_id)
+
+        
+
+
+    def switch_view(self, view_id):
+        self.current_view = view_id
+        self.clear_screen()
+        
+        # Manage Main Sidebar Visibility
+        if view_id == "profile":
+            if hasattr(self, 'sidebar'):
+                self.sidebar.pack_forget()
+        else:
+            # Restore sidebar for main views
+            if hasattr(self, 'sidebar'):
+                if not self.sidebar.winfo_ismapped():
+                     self.sidebar.pack(side="left", fill="y")
                 
-                # Optional: Show warning to user
-                # messagebox.showwarning("Bias Alert", 
-                #     f"Note: Test scores show differences across age groups.\n"
-                #     f"Issues: {', '.join(bias_result.get('issues', []))}")
+                # Sync visual selection if it's a valid sidebar item
+                if view_id in ["home", "exam", "dashboard", "journal", "history"]:
+                    self.sidebar.select_item(view_id, trigger_callback=False)
+
+        if view_id == "home":
+            self.show_home()
+        elif view_id == "exam":
+            self.start_exam()
+        elif view_id == "dashboard":
+            self.show_dashboard()
+        elif view_id == "journal":
+            self.show_journal()
+        elif view_id == "profile":
+            self.show_profile()
+        elif view_id == "history":
+            self.show_history()
+        elif view_id == "assessments":
+            self.show_assessments()
+        elif view_id == "login":
+            # Logout and show login screen
+            self._do_logout()
+
+    def show_history(self):
+        """Show User History (Embedded)"""
+        from app.ui.results import ResultsManager
+        # We need to make sure ResultsManager renders into content_area
+        # Ideally, we pass content_area as root or a parent
+        # But ResultsManager expects 'app'
         
-        except Exception as e:
-            logging.error(f"Bias check failed: {e}")
-            
-    def show_settings(self):
-        """Show settings configuration window"""
-        self.settings_manager.show_settings()
+        # We will create a proxy app for ResultsManager so it uses content_area as root
+        class ContentProxy:
+            def __init__(self, real_app, container):
+                self.real_app = real_app
+                self.root = container # Trick ResultsManager to use this as root
+                self.colors = real_app.colors
+                self.username = real_app.username
+                self.i18n = real_app.i18n
+                # Pass-through methods
+                self.clear_screen = lambda: [w.destroy() for w in container.winfo_children()]
+                self.create_welcome_screen = real_app.show_home # For "Back" buttons
+                
+                # Forward attribute access to real_app for others
+                self.__dict__.update({k: v for k, v in real_app.__dict__.items() if k not in self.__dict__})
 
-    # ---------- ORIGINAL SCREENS (Modified) ----------
-    def create_username_screen(self, callback=None):
-        self.auth.create_username_screen(callback=callback)
+            def __getattr__(self, name):
+                return getattr(self.real_app, name)
 
-    def validate_name_input(self, name):
-        return self.auth.validate_name_input(name)
-
-    def validate_age_input(self, age_str):
-        return self.auth.validate_age_input(age_str)
-    
-    def _enter_start(self, event):
-        self.start_test()
-
-    def start_test(self):
-        self.exam.start_test()
-
-    def show_question(self):
-        self.exam.show_question()
-
-    def previous_question(self):
-        self.exam.previous_question()
-
-    def save_answer(self):
-        self.exam.save_answer()
-
-    def finish_test(self):
-        self.exam.finish_test()
-        # Show satisfaction survey offer
-        self.offer_satisfaction_survey()
-
-    def show_reflection_screen(self):
-        self.exam.show_reflection_screen()
-        
-    def submit_reflection(self):
-        self.exam.submit_reflection()
-
-
-
-
-
-
-
-    def show_ml_analysis(self):
-        self.results.show_ml_analysis()
-
-    def show_history_screen(self):
-        self.results.show_history_screen()
-
-    def view_user_history(self, username):
-        self.results.view_user_history(username)
-
-    def display_user_history(self, username):
-        self.results.display_user_history(username)
-
-    def show_comparison_screen(self):
-        self.results.show_comparison_screen()
-
-    def reset_test(self):
-        self.results.reset_test()
-
-    def force_exit(self):
-        try:
-            conn.close()
-        except Exception:
-            pass
-        self.root.destroy()
-        sys.exit(0)
+        self.clear_screen()
+        proxy = ContentProxy(self, self.content_area)
+        rm = ResultsManager(proxy)
+        rm.display_user_history(self.username)
 
     def clear_screen(self):
-        for w in self.root.winfo_children():
-            w.destroy()
+        for widget in self.content_area.winfo_children():
+            widget.destroy()
 
-# ---------------- MAIN ----------------
-class SplashScreen:
-    def __init__(self, root):
-        self.root = root
-        self.root.overrideredirect(True)
-        self.root.geometry("400x300")
-        
-        # Center Window
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        x = (screen_width - 400) // 2
-        y = (screen_height - 300) // 2
-        self.root.geometry(f"+{x}+{y}")
-        
-        self.root.configure(bg="#2C3E50")
-        
-        tk.Label(self.root, text="Soul Sense", font=("Arial", 30, "bold"), bg="#2C3E50", fg="white").pack(expand=True, pady=(50, 10))
-        tk.Label(self.root, text="Emotional Intelligence Exam", font=("Arial", 14), bg="#2C3E50", fg="#BDC3C7").pack(expand=True, pady=(0, 50))
-        
-        self.loading_label = tk.Label(self.root, text="Initializing...", font=("Arial", 10), bg="#2C3E50", fg="#BDC3C7")
-        self.loading_label.pack(side="bottom", pady=20)
+    def show_assessments(self):
+        """Show Assessment Selection Hub"""
+        self.clear_screen()
+        hub = AssessmentHub(self.content_area, self)
+        hub.render()
 
-    def close_after_delay(self, delay, callback):
-        self.root.after(delay, callback)
+    def show_home(self):
+        # --- WEB-STYLE HERO DASHBOARD ---
+        
+        # Clear previous
+        for widget in self.content_area.winfo_children():
+            widget.destroy()
+            
+        # Main Scrollable Container (Optional, but good for web feel)
+        # For now, simple pack is cleaner for fixed size
+        
+        # 1. Hero Section (Greeting)
+        hero_frame = tk.Frame(self.content_area, bg=self.colors["primary"], height=200)
+        hero_frame.pack(fill="x", padx=30, pady=(30, 20))
+        hero_frame.pack_propagate(False) # Force height
+        
+        # Hero Text
+        tk.Label(hero_frame, text=f"Welcome back, {self.username or 'Guest'}!", 
+                 font=("Segoe UI", 28, "bold"), 
+                 bg=self.colors["primary"], fg=self.colors["text_inverse"]).pack(anchor="w", padx=30, pady=(40, 5))
+                 
+        tk.Label(hero_frame, text="Ready to continue your journey to better wellbeing?", 
+                 font=("Segoe UI", 14), 
+                 bg=self.colors["primary"], fg=self.colors.get("primary_light", "#E0E7FF")).pack(anchor="w", padx=30)
+
+        # Journal Summary Section (Enhanced Journal Feature)
+        if self.username:
+            try:
+                from app.db import get_session
+                from app.models import JournalEntry
+                session = get_session()
+                recent_entries = session.query(JournalEntry)\
+                    .filter_by(username=self.username)\
+                    .order_by(JournalEntry.entry_date.desc())\
+                    .limit(3)\
+                    .all()
+                session.close()
+
+                if recent_entries:
+                    summary_frame = tk.Frame(self.content_area, bg=self.colors["bg"], pady=10)
+                    summary_frame.pack(fill="x", padx=30, pady=(10, 0))
+
+                    tk.Label(summary_frame, text="📝 Recent Journal Insights",
+                             font=("Segoe UI", 14, "bold"), bg=self.colors["bg"],
+                             fg=self.colors["text_primary"]).pack(anchor="w")
+
+                    # Calculate average mood
+                    avg_mood = sum(getattr(e, 'sentiment_score', 0) or 0 for e in recent_entries) / len(recent_entries)
+                    mood_text = "Positive" if avg_mood > 20 else "Neutral" if avg_mood > -20 else "Negative"
+                    mood_color = "#4CAF50" if avg_mood > 20 else "#FF9800" if avg_mood > -20 else "#F44336"
+
+                    tk.Label(summary_frame, text=f"Average mood over last {len(recent_entries)} entries: {mood_text}",
+                             font=("Segoe UI", 11), bg=self.colors["bg"], fg=mood_color).pack(anchor="w", pady=(5, 0))
+            except Exception as e:
+                self.logger.error(f"Failed to load journal summary: {e}")
+
+        # 2. Quick Actions Grid
+        grid_frame = tk.Frame(self.content_area, bg=self.colors["bg"])
+        grid_frame.pack(fill="both", expand=True, padx=30)
+
+        # Card Helper
+        def create_web_card(parent, title, desc, icon, color, cmd):
+            card = tk.Frame(parent, bg=self.colors["surface"], padx=25, pady=25,
+                           highlightbackground=self.colors.get("border", "#E2E8F0"), highlightthickness=1)
+
+            # Icon Circle
+            icon_canvas = tk.Canvas(card, width=50, height=50, bg=self.colors["surface"], highlightthickness=0)
+            icon_canvas.pack(anchor="w", pady=(0, 15))
+            icon_canvas.create_oval(2, 2, 48, 48, fill=color, outline=color)
+            icon_canvas.create_text(25, 25, text=icon, font=("Segoe UI", 20), fill="white")
+
+            # Text
+            tk.Label(card, text=title, font=("Segoe UI", 16, "bold"),
+                     bg=self.colors["surface"], fg=self.colors["text_primary"]).pack(anchor="w")
+
+            tk.Label(card, text=desc, font=("Segoe UI", 11), wraplength=200, justify="left",
+                     bg=self.colors["surface"], fg=self.colors["text_secondary"]).pack(anchor="w", pady=(5, 20))
+
+            # Pseudo-Button
+            btn_lbl = tk.Label(card, text="Open →", font=("Segoe UI", 11, "bold"),
+                              bg=self.colors["surface"], fg=self.colors["primary"], cursor="hand2")
+            btn_lbl.pack(anchor="w")
+
+            # Bind Events
+            card.bind("<Enter>", lambda e: card.configure(bg=self.colors.get("sidebar_hover", "#F1F5F9")))
+            card.bind("<Leave>", lambda e: card.configure(bg=self.colors["surface"]))
+            card.bind("<Button-1>", lambda e: cmd())
+            btn_lbl.bind("<Button-1>", lambda e: cmd())
+
+            return card
+
+        # Layout Cards
+        # Grid: 3 columns
+        card1 = create_web_card(grid_frame, "Assessment", "Track your mental growth with detailed quizzes.", "🧠", self.colors["primary"], lambda: self.sidebar.select_item("exam"))
+        card1.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
+
+        card2 = create_web_card(grid_frame, "Daily Journal", "Record your thoughts and analyze patterns.", "📝", self.colors["success"], lambda: self.sidebar.select_item("journal"))
+        card2.grid(row=0, column=1, padx=15, pady=15, sticky="nsew")
+
+        card3 = create_web_card(grid_frame, "Analytics", "Visualize your wellbeing trends over time.", "📊", self.colors["accent"], lambda: self.sidebar.select_item("dashboard"))
+        card3.grid(row=0, column=2, padx=15, pady=15, sticky="nsew")
+
+        grid_frame.grid_columnconfigure(0, weight=1)
+        grid_frame.grid_columnconfigure(1, weight=1)
+        grid_frame.grid_columnconfigure(2, weight=1)
+
+    def start_exam(self):
+        # ExamManager expects 'app' with 'root'. 
+        # We need to trick it to render into content_area, OR let it takeover.
+        # But ExamManager uses self.root which is mapped to self.root (Window).
+        # We can temporarily map self.root to self.content_area for the manager?
+        # NO, that's risky.
+        # Instead, we pass 'self' as app.
+        # And we'll patch 'root' on self to be content_area if ExamManager uses app.root
+        
+        # Actually ExamManager init: self.root = app.root.
+        # So we can define property 'root' on App? No, App.root is the Window.
+        
+        # Let's instantiate ExamManager but pass a Proxy App object that returns content_area as root?
+        class AppProxy:
+            def __init__(self, app_instance):
+                self.app = app_instance
+            def __getattr__(self, name):
+                if name == "root": return self.app.content_area
+                return getattr(self.app, name)
+
+        self.exam_manager = ExamManager(AppProxy(self))
+        self.exam_manager.start_test()
+
+    def show_dashboard(self):
+        # Open Dashboard (Embedded)
+        try:
+            self.clear_screen()
+            dashboard = AnalyticsDashboard(self.content_area, self.username, theme="dark", colors=self.colors)
+            dashboard.render_dashboard()
+        except Exception as e:
+            self.logger.error(f"Dashboard error: {e}")
+            messagebox.showerror("Error", f"Failed to open dashboard: {e}")
+
+    def show_journal(self):
+        # Open Journal Application
+        # New embedded mode:
+        self.clear_screen()
+        try:
+            journal_feature = JournalFeature(self.root, app=self)
+            journal_feature.render_journal_view(self.content_area, self.username or "Guest")
+        except Exception as e:
+            self.logger.error(f"Journal error: {e}")
+            messagebox.showerror("Error", f"Failed to open journal: {e}")
+
+    def show_profile(self):
+        from app.ui.profile import UserProfileView
+        # Render Profile into content_area
+        UserProfileView(self.content_area, self)
+
+    def _do_logout(self) -> None:
+        """Clear user session and show login screen."""
+        # Clear user state
+        self.username = None
+        self.current_user_id = None
+        self.settings = {}
+        
+        # Hide sidebar
+        if hasattr(self, 'sidebar'):
+            self.sidebar.pack_forget()
+        
+        # Clear content area
+        self.clear_screen()
+        
+        # Show login screen
+        self.show_login_screen()
+
+    def graceful_shutdown(self) -> None:
+        """Perform graceful shutdown operations"""
+        self.logger.info("Initiating graceful application shutdown...")
+
+        try:
+            # Commit any pending database operations
+            # Commit any pending database operations
+            # Session handling is tricky at shutdown. 
+            # Ideally services handle their own sessions.
+            # But if we need a global commit:
+            session = get_session()
+            if session:
+                session.commit()
+                session.close()
+                self.logger.info("Database session committed and closed successfully")
+        except Exception as e:
+            self.logger.error(f"Error during database shutdown: {e}")
+
+        # Log shutdown
+        self.logger.info("Application shutdown complete")
+
+        # Destroy the root window to exit
+        if hasattr(self, 'root') and self.root:
+            self.root.destroy()
+
+# --- Global Error Handlers ---
+
+def show_error(title, message, exception=None):
+    """Global error display function"""
+    if exception:
+        logging.error(f"{title}: {message} - {exception}")
+    else:
+        logging.error(f"{title}: {message}")
+        
+    try:
+        messagebox.showerror(title, message)
+    except:
+        print(f"CRITICAL ERROR (No GUI): {title} - {message}")
+
+def global_exception_handler(self, exc_type, exc_value, traceback_obj):
+    """Handle uncaught exceptions"""
+    import traceback
+    traceback_str = "".join(traceback.format_exception(exc_type, exc_value, traceback_obj))
+    logging.critical(f"Uncaught Exception: {traceback_str}")
+    show_error("Unexpected Error", f"An unexpected error occurred:\n{exc_value}", exception=traceback_str)
+
 
 if __name__ == "__main__":
-    splash_root = tk.Tk()
-    splash = SplashScreen(splash_root)
+    # Setup centralized logging and error handling
+    setup_logging()
+    setup_global_exception_handlers()
+    
+    try:
+        # Run startup integrity checks before initializing the app
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+        
+        try:
+            results = run_all_checks(raise_on_critical=True)
+            summary = get_check_summary(results)
+            logger.info(summary)
+            
+            # Show warning dialog if there were any warnings
+            warnings = [r for r in results if r.status == CheckStatus.WARNING]
+            if warnings:
+                # Create a temporary root for the warning dialog
+                temp_root = tk.Tk()
+                temp_root.withdraw()
+                warning_msg = "\n".join([f"• {r.name}: {r.message}" for r in warnings])
+                messagebox.showwarning(
+                    "Startup Warnings",
+                    f"The application started with the following warnings:\n\n{warning_msg}\n\nThe application will continue with default settings."
+                )
+                temp_root.destroy()
+                
+        except IntegrityError as e:
+            # Critical failure - show error and exit
+            temp_root = tk.Tk()
+            temp_root.withdraw()
+            messagebox.showerror(
+                "Startup Failed",
+                f"Critical integrity check failed:\n\n{str(e)}\n\nThe application cannot start."
+            )
+            temp_root.destroy()
+            raise SystemExit(1)
+        
+        # All checks passed, start the application
+        
+        # Initialize Questions Cache (Preload)
+        from app.questions import initialize_questions
+        logger.info("Preloading questions into memory...")
+        if not initialize_questions():
+            logger.warning("Initial question preload failed. Application will attempt lazy-loading.")
 
-    def launch_main_app():
-        splash_root.destroy()
         root = tk.Tk()
+        
+        # Register tkinter-specific exception handler
+        def tk_report_callback_exception(exc_type, exc_value, exc_tb):
+            """Handle exceptions in tkinter callbacks."""
+            handler = get_error_handler()
+            handler.log_error(
+                exc_value,
+                module="tkinter",
+                operation="callback",
+                severity=ErrorSeverity.HIGH
+            )
+            user_msg = handler.get_user_message(exc_value)
+            show_error("Interface Error", user_msg, exc_value)
+        
+        root.report_callback_exception = tk_report_callback_exception
+        
         app = SoulSenseApp(root)
-        root.protocol("WM_DELETE_WINDOW", app.force_exit)
-        root.mainloop()
 
-    splash.close_after_delay(2000, launch_main_app)
-    splash_root.mainloop()
+        # Set up graceful shutdown handlers
+        root.protocol("WM_DELETE_WINDOW", app.graceful_shutdown)
+
+        # Signal handlers for SIGINT (Ctrl+C) and SIGTERM
+        def signal_handler(signum, frame):
+            app.logger.info(f"Received signal {signum}, initiating shutdown")
+            app.graceful_shutdown()
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Register atexit handler as backup
+        atexit.register(app.graceful_shutdown)
+
+        root.mainloop()
+        
+    except SystemExit:
+        pass  # Clean exit from integrity failure
+    except Exception as e:
+        import traceback
+        handler = get_error_handler()
+        handler.log_error(e, module="main", operation="startup", severity=ErrorSeverity.CRITICAL)
+        traceback.print_exc()
+

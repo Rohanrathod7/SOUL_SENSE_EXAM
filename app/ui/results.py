@@ -10,12 +10,16 @@ try:
     from app.services.pdf_generator import generate_pdf_report
 except ImportError:
     generate_pdf_report = None
+import json
+from app.models import AssessmentResult
+from typing import Any, Dict, List, Optional, Tuple
+from app.ui.components.loading_overlay import show_loading, hide_loading
 
 class ResultsManager:
-    def __init__(self, app):
+    def __init__(self, app: Any) -> None:
         self.app = app
 
-    def show_satisfaction_survey(self):
+    def show_satisfaction_survey(self) -> None:
         """Show satisfaction survey from results page"""
         try:
             from app.ui.satisfaction import SatisfactionSurvey
@@ -43,7 +47,7 @@ class ResultsManager:
             messagebox.showerror("Error", f"Cannot open survey: {str(e)}")
         
     # ---------- BENCHMARKING FUNCTIONS ----------
-    def calculate_percentile(self, score, avg_score, std_dev):
+    def calculate_percentile(self, score: float, avg_score: float, std_dev: float) -> int:
         """Calculate percentile based on normal distribution"""
         if std_dev == 0:
             return 50 if score == avg_score else (100 if score > avg_score else 0)
@@ -79,7 +83,7 @@ class ResultsManager:
             
         return percentile
 
-    def get_benchmark_comparison(self):
+    def get_benchmark_comparison(self) -> Dict[str, Any]:
         """Get benchmark comparisons for the current score"""
         comparisons = {}
         
@@ -118,7 +122,7 @@ class ResultsManager:
         
         return comparisons
 
-    def get_benchmark_interpretation(self, comparisons):
+    def get_benchmark_interpretation(self, comparisons: Dict[str, Any]) -> List[str]:
         """Get interpretation text based on benchmark comparisons"""
         interpretations = []
         
@@ -159,7 +163,7 @@ class ResultsManager:
         
         return interpretations
 
-    def create_benchmark_chart(self, parent, comparisons):
+    def create_benchmark_chart(self, parent: tk.Widget, comparisons: Dict[str, Any]) -> tk.Frame:
         """Create a visual benchmark comparison chart"""
         chart_frame = tk.Frame(parent)
         chart_frame.pack(fill="x", pady=10)
@@ -257,16 +261,20 @@ class ResultsManager:
         
         return chart_frame
 
-    def export_results_pdf(self):
+    def export_results_pdf(self) -> None:
         """Export current results to PDF"""
         if not generate_pdf_report:
             messagebox.showerror("Error", "PDF Generator module not available.")
             return
 
+        loading = None
         try:
+            from app.utils.file_validation import validate_file_path, sanitize_filename, ValidationError
+            
             # Generate default filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"EQ_Report_{self.app.username}_{timestamp}.pdf"
+            safe_username = sanitize_filename(self.app.username)
+            default_name = f"EQ_Report_{safe_username}_{timestamp}.pdf"
             
             # Ask user for location
             from tkinter import filedialog
@@ -279,6 +287,18 @@ class ResultsManager:
             
             if not filename:
                 return # User cancelled
+
+            # Validate the user-selected path
+            try:
+                # We don't enforce base_dir here as users can save anywhere via GUI dialog
+                filename = validate_file_path(filename, allowed_extensions=[".pdf"])
+            except ValidationError as ve:
+                messagebox.showerror("Security Error", str(ve))
+                return
+
+            # Show loading overlay during PDF generation
+            loading = show_loading(self.app.root, "Generating PDF report...")
+            self.app.root.update()  # Force UI update
 
             # Prepare data for report
             result_path = generate_pdf_report(
@@ -293,21 +313,22 @@ class ResultsManager:
                 filepath=filename
             )
             
+            hide_loading(loading)
+            loading = None
+            
             if result_path:
                 messagebox.showinfo("Success", f"Report saved successfully:\n{result_path}")
-                # Optional: Open the file
-                # import os
-                # os.startfile(result_path) 
             
         except Exception as e:
+            hide_loading(loading)
             messagebox.showerror("Export Error", f"Failed to generate PDF:\n{str(e)}")
             logging.error(f"PDF Export failed: {e}")
 
-    def show_results(self):
+    def show_results(self) -> None:
         """Main method to show results - calls show_visual_results"""
         self.show_visual_results()
 
-    def show_visual_results(self):
+    def show_visual_results(self) -> None:
         """Modern, elegant results page with responsive design"""
         self.app.clear_screen()
         self.app.root.state('zoomed')
@@ -318,14 +339,12 @@ class ResultsManager:
         main_frame = tk.Frame(self.app.root, bg=colors.get("bg", "#0F172A"))
         main_frame.pack(fill="both", expand=True)
         
-        # Create scrollable canvas
+        # Create scrollable canvas (Hidden Scrollbar)
         canvas = tk.Canvas(main_frame, bg=colors.get("bg", "#0F172A"), highlightthickness=0)
-        scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
         scrollable = tk.Frame(canvas, bg=colors.get("bg", "#0F172A"))
         
         # Create window and store its ID for resizing
         canvas_window = canvas.create_window((0, 0), window=scrollable, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
         
         # Responsive: Update canvas width when window resizes
         def on_canvas_configure(event):
@@ -334,14 +353,26 @@ class ResultsManager:
         
         scrollable.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         
-        # Safe mouse wheel binding
+        # Robust mouse wheel binding (Conditional)
         def _on_mousewheel(event):
             try:
-                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                if canvas.winfo_exists():
+                    # Only scroll if content > view
+                    if scrollable.winfo_reqheight() > canvas.winfo_height():
+                        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
             except:
                 pass
-        canvas.bind("<MouseWheel>", _on_mousewheel)
-        scrollable.bind("<MouseWheel>", _on_mousewheel)
+
+        def _bind_mouse(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            
+        def _unbind_mouse(event):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", _bind_mouse)
+        canvas.bind("<Leave>", _unbind_mouse)
+        scrollable.bind("<Enter>", _bind_mouse)
+        scrollable.bind("<Leave>", _unbind_mouse)
         
         # ===== HEADER BAR with Menu Button =====
         header_bar = tk.Frame(scrollable, bg="#22C55E")
@@ -547,9 +578,8 @@ class ResultsManager:
             width=20, pady=8
         ).pack(pady=(25, 40))
         
-        # Pack canvas and scrollbar
+        # Pack canvas (Hidden Scrollbar)
         canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
     
     def _lighten(self, color):
         """Lighten a hex color"""
@@ -577,19 +607,18 @@ class ResultsManager:
         
         colors = self.app.colors
         
-        # Scrollable container
+        # Scrollable container (Hidden Scrollbar)
         canvas = tk.Canvas(detail_win, bg=colors.get("bg", "#0F172A"), highlightthickness=0)
-        scrollbar = tk.Scrollbar(detail_win, orient="vertical", command=canvas.yview)
         scrollable = tk.Frame(canvas, bg=colors.get("bg", "#0F172A"))
         
         scrollable.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=scrollable, anchor="nw", width=780)
-        canvas.configure(yscrollcommand=scrollbar.set)
         
-        # Mouse wheel - bind only to this window's widgets
+        # Mouse wheel - bind only to this window's widgets (Conditional)
         def _on_mousewheel(event):
             try:
-                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                if scrollable.winfo_reqheight() > canvas.winfo_height():
+                    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
             except:
                 pass
         
@@ -646,7 +675,6 @@ class ResultsManager:
         ).pack(pady=20)
         
         canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
     
     def _create_progress_section(self, parent, colors):
         """Create EQ progress bar section"""
@@ -749,8 +777,13 @@ class ResultsManager:
         if not hasattr(self.app, 'ml_predictor') or not self.app.ml_predictor:
             messagebox.showerror("Error", "AI Model not loaded.")
             return
-            
+        
+        loading = None
         try:
+            # Show loading overlay during ML inference
+            loading = show_loading(self.app.root, "Running AI analysis...")
+            self.app.root.update()  # Force UI update
+            
             # 1. Get Prediction
             result = self.app.ml_predictor.predict_with_explanation(
                 self.app.responses,
@@ -758,6 +791,10 @@ class ResultsManager:
                 self.app.current_score,
                 sentiment_score=self.app.sentiment_score if hasattr(self.app, 'sentiment_score') else None
             )
+            
+            # Hide loading before showing popup
+            hide_loading(loading)
+            loading = None
             
             colors = self.app.colors
             
@@ -965,6 +1002,7 @@ class ResultsManager:
             btn_close.bind("<Leave>", lambda e: btn_close.configure(bg="#546E7A"))
             
         except Exception as e:
+            hide_loading(loading)
             logging.error("AI Analysis failed", exc_info=True)
             messagebox.showerror("Analysis Error", f"Could not generate AI report.\n{e}")
 
@@ -1118,6 +1156,19 @@ class ResultsManager:
             ).pack(pady=20)
             return
         
+        # Get user_id for Deep Dive results
+        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        user_id = row[0] if row else None
+
+        deep_dives = []
+        if user_id:
+            cursor.execute(
+                "SELECT assessment_type, total_score, timestamp, details FROM assessment_results WHERE user_id = ? ORDER BY timestamp DESC",
+                (user_id,)
+            )
+            deep_dives = cursor.fetchall()
+
         # Create scrollable frame for history
         canvas = tk.Canvas(self.app.root, bg=colors.get("bg", "#0F172A"), highlightthickness=0)
         scrollbar = tk.Scrollbar(self.app.root, orient="vertical", command=canvas.yview)
@@ -1131,10 +1182,16 @@ class ResultsManager:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         
+        # --- SECTION: STANDARD EQ TESTS ---
+        tk.Label(scrollable_frame, text="Standard EQ Assessments", font=("Arial", 14, "bold"), 
+                 bg=colors.get("bg", "#0F172A"), fg=colors.get("text_primary", "#F8FAFC")).pack(anchor="w", padx=20, pady=(10, 5))
+
         # Display each test result
         for idx, (test_id, score, age, timestamp) in enumerate(history):
-            # Calculate percentage (assuming 4 points per question)
-            max_score = len(self.app.questions) * 4
+            # Calculate percentage (stateless approximation based on current settings)
+            # Ideally max_score should be stored in DB, but falling back to settings for now
+            question_count = self.app.settings.get("question_count", 10)
+            max_score = question_count * 4
             percentage = (score / max_score) * 100 if max_score > 0 else 0
             
             test_frame = tk.Frame(scrollable_frame, bg=colors.get("surface", "#1E293B"), relief="groove", borderwidth=2)
@@ -1207,6 +1264,44 @@ class ResultsManager:
             # Percentage text
             text_color = "white"
             bar_canvas.create_text(bar_width/2, 10, text=f"{percentage:.1f}%", fill=text_color)
+        
+        # --- SECTION: DEEP DIVE ASSESSMENTS ---
+        if deep_dives:
+            tk.Label(scrollable_frame, text="Deep Dive Insights", font=("Arial", 14, "bold"), 
+                     bg=colors.get("bg", "#0F172A"), fg=colors.get("text_primary", "#F8FAFC")).pack(anchor="w", padx=20, pady=(20, 5))
+            
+            for d_type, d_score, d_ts, d_details in deep_dives:
+                dd_frame = tk.Frame(scrollable_frame, bg=colors.get("surface", "#1E293B"), relief="groove", borderwidth=1)
+                dd_frame.pack(fill="x", padx=20, pady=5)
+                
+                # Header
+                h_frame = tk.Frame(dd_frame, bg=colors.get("surface", "#1E293B"))
+                h_frame.pack(fill="x", padx=10, pady=8)
+                
+                type_map = {
+                    "career_clarity": "🚀 Career Clarity",
+                    "work_satisfaction": "💼 Work Satisfaction",
+                    "strengths_deep_dive": "💪 Strengths Finder"
+                }
+                title = type_map.get(d_type, d_type.replace("_", " ").title())
+                
+                tk.Label(h_frame, text=title, font=("Segoe UI", 12, "bold"), bg=colors.get("surface", "#1E293B"), 
+                         fg=colors.get("text_primary", "#F8FAFC")).pack(side="left")
+                         
+                tk.Label(h_frame, text=f"Score: {d_score}/100", font=("Segoe UI", 12, "bold"), 
+                         bg=colors.get("surface", "#1E293B"), fg=colors.get("primary", "#3B82F6")).pack(side="right")
+                
+                # Date
+                try:
+                    d_date = datetime.fromisoformat(d_ts).strftime("%Y-%m-%d %H:%M")
+                except:
+                    d_date = str(d_ts)
+                tk.Label(h_frame, text=d_date, font=("Segoe UI", 9), bg=colors.get("surface", "#1E293B"), 
+                         fg=colors.get("text_secondary", "#94A3B8")).pack(side="right", padx=15)
+
+                # Details Expander (Static for now)
+                # Parse JSON if needed, but simple score is enough for summary
+
         
         # Pack canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True, padx=20, pady=10)
@@ -1289,8 +1384,10 @@ class ResultsManager:
         # Prepare data for visualization
         test_numbers = list(range(1, len(all_tests) + 1))
         scores = [test[1] for test in all_tests]
-        max_score = len(self.app.questions) * 4
-        percentages = [(score / max_score) * 100 for score in scores]
+        # Use settings for consistency
+        question_count = self.app.settings.get("question_count", 10)
+        max_score = question_count * 4
+        percentages = [(score / max_score) * 100 if max_score > 0 else 0 for score in scores]
         
         # Create main comparison frame
         comparison_frame = tk.Frame(self.app.root, bg=colors.get("bg", "#0F172A"))

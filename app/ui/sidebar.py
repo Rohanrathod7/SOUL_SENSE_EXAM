@@ -44,24 +44,31 @@ class SidebarNav(tk.Frame):
         info_frame = tk.Frame(header, bg=self.app.colors.get("sidebar_bg"))
         info_frame.pack(side="left", padx=15, fill="both", expand=True)
         
-        tk.Label(
+        self.name_label = tk.Label(
             info_frame, 
-            text=self.app.username,
-            font=("Segoe UI", 12, "bold"),
+            text=self.app.username or "Guest",
+            font=self.app.ui_styles.get_font("sm", "bold"),
             bg=self.app.colors.get("sidebar_bg"),
             fg="white",
             anchor="w"
-        ).pack(fill="x", pady=(10, 0))
+        )
+        self.name_label.pack(fill="x", pady=(10, 0))
         
-        tk.Label(
+        self.edit_label = tk.Label(
             info_frame, 
-            text="Edit Profile Picture", 
-            font=("Segoe UI", 8),
+            text="View Profile", 
+            font=self.app.ui_styles.get_font("xs"),
             bg=self.app.colors.get("sidebar_bg"),
             fg=self.app.colors.get("sidebar_divider"),
             anchor="w",
             cursor="hand2"
-        ).pack(fill="x")
+        )
+        self.edit_label.pack(fill="x")
+        
+        # Bind Name/Info to Open Profile Tab
+        for widget in [info_frame, self.name_label, self.edit_label]:
+            widget.bind("<Button-1>", lambda e: self.select_item("profile"))
+            widget.configure(cursor="hand2")
         
     def _load_avatar(self):
         import os
@@ -99,7 +106,7 @@ class SidebarNav(tk.Frame):
         self.avatar_canvas.delete("all")
         self.avatar_canvas.create_oval(5, 5, 55, 55, fill="white", outline=self.app.colors.get("sidebar_divider"))
         initial = self.app.username[0].upper() if self.app.username else "?"
-        self.avatar_canvas.create_text(30, 30, text=initial, font=("Segoe UI", 20, "bold"), fill=self.app.colors.get("sidebar_bg"))
+        self.avatar_canvas.create_text(30, 30, text=initial, font=self.app.ui_styles.get_font("h2", "bold"), fill=self.app.colors.get("sidebar_bg"))
 
     def _upload_avatar(self, event=None):
         from tkinter import filedialog, messagebox
@@ -155,7 +162,7 @@ class SidebarNav(tk.Frame):
         lbl_icon = tk.Label(
             btn_frame, 
             text=item.get("icon", "•"), 
-            font=("Segoe UI", 14),
+            font=self.app.ui_styles.get_font("md"),
             bg=self.app.colors.get("sidebar_bg"),
             fg=self.app.colors.get("sidebar_fg")
         )
@@ -165,7 +172,7 @@ class SidebarNav(tk.Frame):
         lbl_text = tk.Label(
             btn_frame, 
             text=item.get("label", item_id.title()), 
-            font=("Segoe UI", 11),
+            font=self.app.ui_styles.get_font("sm"),
             bg=self.app.colors.get("sidebar_bg"),
             fg=self.app.colors.get("sidebar_fg")
         )
@@ -197,9 +204,10 @@ class SidebarNav(tk.Frame):
         widgets["text"].configure(bg=bg_color)
         widgets["indicator"].configure(bg=bg_color)
 
-    def select_item(self, item_id):
-        if self.active_id == item_id:
-            return
+    def select_item(self, item_id, trigger_callback=True):
+        # Allow re-clicking to refresh view (User Requested)
+        # if self.active_id == item_id:
+        #     return
             
         # Reset old active
         if self.active_id:
@@ -209,10 +217,13 @@ class SidebarNav(tk.Frame):
         self.active_id = item_id
         self._update_item_style(item_id, True)
         
-        if self.on_change:
+        if self.on_change and trigger_callback:
             self.on_change(item_id)
             
     def _update_item_style(self, item_id, is_active):
+        if item_id not in self.buttons:
+            return
+
         widgets = self.buttons[item_id]
         
         # Colors
@@ -229,3 +240,50 @@ class SidebarNav(tk.Frame):
         widgets["icon"].configure(bg=bg_color, fg=fg_color)
         widgets["text"].configure(bg=bg_color, fg=fg_color)
         widgets["indicator"].configure(bg=indicator_color)
+
+    def update_theme(self):
+        """Update colors for all sidebar elements"""
+        # Main background
+        self.configure(bg=self.app.colors.get("sidebar_bg"))
+        self.nav_frame.configure(bg=self.app.colors.get("sidebar_bg"))
+        
+        # Update Header
+        if hasattr(self, 'name_label'):
+             self.name_label.configure(bg=self.app.colors.get("sidebar_bg"), fg="white")
+        if hasattr(self, 'edit_label'):
+             self.edit_label.configure(bg=self.app.colors.get("sidebar_bg"), fg=self.app.colors.get("sidebar_divider"))
+        
+        # Recursive update for all children to ensure nested frames (like info_frame) get updated
+        def update_recursive(widget):
+            try:
+                if isinstance(widget, (tk.Frame, tk.Canvas)):
+                     widget.configure(bg=self.app.colors.get("sidebar_bg"))
+                elif isinstance(widget, tk.Label):
+                     # Be careful not to overwrite custom fgs, but bg should match sidebar
+                     # Unless it's a specific button label. 
+                     # For header labels, we handled them above or they match sidebar_bg
+                     if widget not in self.buttons.values(): # Don't touch nav buttons here
+                        widget.configure(bg=self.app.colors.get("sidebar_bg"))
+                
+                for child in widget.winfo_children():
+                    update_recursive(child)
+            except:
+                pass
+
+        # Update non-nav items (Header)
+        for widget in self.winfo_children():
+            if widget != self.nav_frame:
+                update_recursive(widget)
+
+        # Update Buttons
+        for item_id, widgets in self.buttons.items():
+            is_active = (item_id == self.active_id)
+            self._update_item_style(item_id, is_active)
+
+    def update_user_info(self):
+        """Update username display and avatar after login"""
+        if hasattr(self, 'name_label'):
+            self.name_label.configure(text=self.app.username or "Guest")
+        
+        # Reload avatar
+        self._load_avatar()

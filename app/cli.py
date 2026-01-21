@@ -4,28 +4,29 @@ import sys
 import logging
 import time
 import math
-from typing import Optional
+from typing import Optional, Dict, Any, Tuple, List
 
-# Ensure app is in path
-sys.path.append(os.getcwd())
+# --- Refactor: Imports moved inside methods or guarded where possible ---
+# But we need types for class definition. 
+# We assume the environment is set up correctly by the runner (or main block)
+# instead of hacking path at module level.
 
-from app.services.exam_service import ExamSession
-from app.questions import load_questions, get_random_questions_by_age
-from app.utils import compute_age_group
-from app.logger import setup_logging
+# Simple logging config for CLI 
+logging.basicConfig(level=logging.ERROR) 
 
-# Optional NLTK
+# Lazy load NLTK inside class or setup method to avoid import time cost/errors
+SENTIMENT_AVAILABLE = False
 try:
     import nltk
     from nltk.sentiment import SentimentIntensityAnalyzer
     SENTIMENT_AVAILABLE = True
 except ImportError:
-    SENTIMENT_AVAILABLE = False
-    SentimentIntensityAnalyzer = None
+    pass
 
-# Simple logging config for CLI (avoid file spam if just testing)
-# But respect main logger if needed.
-logging.basicConfig(level=logging.ERROR) 
+from app.services.exam_service import ExamSession
+from app.questions import load_questions, get_random_questions_by_age
+from app.utils import compute_age_group
+# from app.logger import setup_logging # Not used in snippet, but good practice
 
 # ANSI Color Codes
 class Colors:
@@ -68,31 +69,47 @@ def colorize(text: str, color: str) -> str:
     return text
 
 class SoulSenseCLI:
-    def __init__(self):
+    def __init__(self, auth_manager: Any = None, session_manager: Any = None) -> None:
+        """
+        Initialize CLI environment.
+        dependency injection supported for testing.
+        """
         self.username = ""
         self.age = 0
         self.age_group = ""
         self.session: Optional[ExamSession] = None
         
-        # Load SHARED settings (same source as GUI)
-        from app.utils import load_settings, save_settings
+        # Dependency Injection / Lazy Load
+        self._auth_manager = auth_manager
+        self._session_manager = session_manager
+        
+        # Load SHARED settings
+        from app.utils import load_settings
         self.settings = load_settings()
         self.num_questions = self.settings.get("question_count", 10)
         
-        # Download NLTK if needed (quietly)
-        if SENTIMENT_AVAILABLE:
-            try:
-                nltk.data.find('sentiment/vader_lexicon.zip')
-            except LookupError:
-                try:
-                    nltk.download('vader_lexicon', quiet=True)
-                except Exception:
-                    pass
+        # Setup Environment
+        self._setup_nltk()
 
-    def clear_screen(self):
+    def _setup_nltk(self):
+        """Lazy load/download NLTK data"""
+        if not SENTIMENT_AVAILABLE:
+            return
+            
+        try:
+            nltk.data.find('sentiment/vader_lexicon.zip')
+        except LookupError:
+            try:
+                print("Downloading NLTK data (vader_lexicon)...")
+                nltk.download('vader_lexicon', quiet=True)
+            except Exception as e:
+                # Log but continue, sentiment will just be unavailable
+                logging.warning(f"Failed to download NLTK data: {e}")
+
+    def clear_screen(self) -> None:
         os.system('cls' if os.name == 'nt' else 'clear')
 
-    def print_header(self):
+    def print_header(self) -> None:
         self.clear_screen()
         print("="*60)
         print("      S O U L   S E N S E   ( C L I   V E R S I O N )")
@@ -106,28 +123,30 @@ class SoulSenseCLI:
         except EOFError:
             return ""
 
-    def authenticate(self):
+    def authenticate(self) -> None:
         """Get user details with validation and load settings"""
         self.print_header()
+        
+        from app.validation import validate_required, validate_age, AGE_MIN, AGE_MAX
         
         # Username
         while True:
             name = self.get_input("Enter your name: ")
-            if name:
+            valid, msg = validate_required(name, "Name")
+            if valid:
                 self.username = name
                 break
-            print("Name cannot be empty.")
+            print(msg)
             
         # Age
         while True:
-            age_str = self.get_input("Enter your age (10-100): ")
-            if age_str.isdigit():
-                age = int(age_str)
-                if 10 <= age <= 100:
-                    self.age = age
-                    self.age_group = compute_age_group(age)
-                    break
-            print("Invalid age. Please enter a number between 10 and 100.")
+            age_str = self.get_input(f"Enter your age ({AGE_MIN}-{AGE_MAX}): ")
+            valid, msg = validate_age(age_str)
+            if valid:
+                self.age = int(age_str)
+                self.age_group = compute_age_group(self.age)
+                break
+            print(msg)
             
         print(f"\nWelcome, {self.username} ({self.age_group}).")
         
@@ -156,7 +175,7 @@ class SoulSenseCLI:
                 else:
                     print("User profile found.")
                 
-                user_id = user.id
+                user_id = int(user.id)
             
             # Load User Settings
             if user_id:
@@ -176,7 +195,7 @@ class SoulSenseCLI:
         print("\nLoading assessment...\n")
         time.sleep(1)
 
-    def initialize_session(self):
+    def initialize_session(self) -> None:
         """Load questions and start session"""
         try:
             all_questions = load_questions(age=self.age)
@@ -190,15 +209,18 @@ class SoulSenseCLI:
             print(f"Error loading exam: {e}")
             sys.exit(1)
 
-    def print_progress(self, current, total, pct):
+    def print_progress(self, current: int, total: int, pct: float) -> None:
         """ASCII Progress Bar"""
         bar_len = 30
         filled_len = int(bar_len * pct / 100)
         bar = '█' * filled_len + '-' * (bar_len - filled_len)
         print(f"\nProgress: [{bar}] {int(pct)}% ({current}/{total})")
 
-    def run_exam_loop(self):
+    def run_exam_loop(self) -> None:
         """Main Exam Loop"""
+        if not self.session:
+            return
+
         while not self.session.is_finished():
             self.clear_screen()
             
@@ -247,8 +269,11 @@ class SoulSenseCLI:
                 else:
                     print("Invalid input. Please enter 1-4, 'b', or 'q'.")
 
-    def run_reflection(self):
+    def run_reflection(self) -> None:
         """Reflection Phase"""
+        if not self.session:
+            return
+
         self.clear_screen()
         print("="*60)
         print("      F I N A L   R E F L E C T I O N")
@@ -263,7 +288,7 @@ class SoulSenseCLI:
         self.session.submit_reflection(text)
         time.sleep(1)
 
-    def get_score_label(self, percentage: float) -> tuple:
+    def get_score_label(self, percentage: float) -> Tuple[str, str, str]:
         """Return (label, emoji, color) based on score percentage"""
         if percentage >= 85:
             return ("EXCELLENT", "🌟", Colors.GREEN)
@@ -283,7 +308,7 @@ class SoulSenseCLI:
         else:
             return "Negative"
 
-    def get_historical_data(self):
+    def get_historical_data(self) -> Tuple[Optional[float], Optional[float]]:
         """Fetch user's previous scores for comparison"""
         try:
             from app.db import get_connection
@@ -310,8 +335,11 @@ class SoulSenseCLI:
         except Exception:
             return None, None
 
-    def show_results(self):
+    def show_results(self) -> None:
         """Display Enhanced Final Results"""
+        if not self.session:
+            return
+
         success = self.session.finish_exam()
         if not success:
             print("Error saving results.")
@@ -367,7 +395,7 @@ class SoulSenseCLI:
         print("Thank you for using Soul Sense CLI.")
         self.get_input("\nPress Enter to exit...")
 
-    def show_main_menu(self):
+    def show_main_menu(self) -> int:
         """Display main menu and return user choice"""
         self.print_header()
         
@@ -387,7 +415,7 @@ class SoulSenseCLI:
                 return int(choice)
             print("Invalid choice. Please enter 1-7.")
 
-    def show_history(self):
+    def show_history(self) -> None:
         """Display exam history with ASCII graph"""
         self.clear_screen()
         print("="*60)
@@ -461,7 +489,7 @@ class SoulSenseCLI:
         
         self.get_input("\nPress Enter to continue...")
 
-    def show_statistics(self):
+    def show_statistics(self) -> None:
         """Display comprehensive user statistics"""
         self.clear_screen()
         print("="*60)
@@ -546,7 +574,7 @@ class SoulSenseCLI:
         
         self.get_input("\nPress Enter to continue...")
 
-    def export_results(self):
+    def export_results(self) -> None:
         """Export results to file with directory selection"""
         self.clear_screen()
         print("="*60)
@@ -589,23 +617,45 @@ class SoulSenseCLI:
             print(f"\nDefault directory: {default_dir}")
             custom_dir = self.get_input("Enter directory path (or press Enter for default): ").strip()
             
-            if custom_dir:
-                export_dir = os.path.abspath(custom_dir)
-            else:
-                export_dir = default_dir
-            
-            # Create directory if it doesn't exist
             try:
+                from app.utils.file_validation import validate_file_path, sanitize_filename, ValidationError
+                
+                if custom_dir:
+                    # User provided a directory. We validate it exists or can be created.
+                    # Note: We don't strictly enforce base_dir here for CLI as power users might want 
+                    # to export to Desktop/etc., but we DO ensure it treats '..' safely via realpath
+                    # For strict mode we could enforce base_dir=default_dir
+                    export_dir = os.path.realpath(os.path.abspath(custom_dir))
+                else:
+                    export_dir = default_dir
+                
                 os.makedirs(export_dir, exist_ok=True)
+                
             except Exception as e:
-                print(f"\n{colorize('❌ Error:', Colors.RED)} Cannot create directory: {e}")
+                print(f"\n{colorize('❌ Error:', Colors.RED)} Invalid directory: {e}")
                 self.get_input("\nPress Enter to continue...")
                 return
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             ext = "json" if choice == '1' else "csv"
-            filename = f"{self.username}_{timestamp}.{ext}"
-            filepath = os.path.join(export_dir, filename)
+            
+            # Sanitize username for filename
+            safe_username = sanitize_filename(self.username)
+            filename = f"{safe_username}_{timestamp}.{ext}"
+            
+            # Final validation before writing
+            try:
+                filepath = validate_file_path(
+                    os.path.join(export_dir, filename), 
+                    allowed_extensions=[f".{ext}"]
+                )
+            except ValidationError as ve:
+                print(f"\n{colorize('❌ Security Error:', Colors.RED)} {ve}")
+                self.get_input("\nPress Enter to continue...")
+                return
+            
+            # Import atomic_write
+            from app.utils.atomic import atomic_write
             
             if choice == '1':
                 # JSON Export
@@ -624,12 +674,12 @@ class SoulSenseCLI:
                         } for r in rows
                     ]
                 }
-                with open(filepath, 'w', encoding='utf-8') as f:
+                with atomic_write(filepath, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                     
             elif choice == '2':
                 # CSV Export
-                with open(filepath, 'w', encoding='utf-8') as f:
+                with atomic_write(filepath, 'w', encoding='utf-8') as f:
                     f.write("timestamp,score,sentiment,reflection,is_rushed,is_inconsistent\n")
                     for r in rows:
                         reflection = (r[3] or "").replace('"', '""').replace('\n', ' ')
@@ -644,7 +694,7 @@ class SoulSenseCLI:
         
         self.get_input("\nPress Enter to continue...")
 
-    def show_dashboard(self):
+    def show_dashboard(self) -> None:
         """Display dashboard sub-menu"""
         while True:
             self.clear_screen()
@@ -674,7 +724,7 @@ class SoulSenseCLI:
             else:
                 print("Invalid choice.")
 
-    def show_eq_trends(self):
+    def show_eq_trends(self) -> None:
         """Display EQ score trends over time"""
         self.clear_screen()
         print("="*60)
@@ -721,7 +771,7 @@ class SoulSenseCLI:
         
         self.get_input("\nPress Enter to continue...")
 
-    def show_time_analysis(self):
+    def show_time_analysis(self) -> None:
         """Display time-based analysis"""
         self.clear_screen()
         print("="*60)
@@ -747,7 +797,7 @@ class SoulSenseCLI:
                 print("No data yet.")
             else:
                 # Analyze by hour
-                hour_scores = {}
+                hour_scores: Dict[int, List[float]] = {}
                 for row in rows:
                     try:
                         ts = datetime.fromisoformat(row[0])
@@ -780,7 +830,7 @@ class SoulSenseCLI:
         
         self.get_input("\nPress Enter to continue...")
 
-    def show_emotional_profile(self):
+    def show_emotional_profile(self) -> None:
         """Display emotional profile analysis"""
         self.clear_screen()
         print("="*60)
@@ -930,10 +980,33 @@ class SoulSenseCLI:
             choice = self.get_input("Select option (1-2): ")
             
             if choice == '1':
-                new_val = self.get_input(f"Enter new question count (5-20, current: {self.num_questions}): ")
-                if new_val.isdigit() and 5 <= int(new_val) <= 20:
-                    self.num_questions = int(new_val)
-                    # Save to shared settings (same file as GUI)
+                # Loop until valid input provided or user cancels with 'b'
+                from app.validation import validate_range
+                while True:
+                    new_val = self.get_input(f"Enter new question count (1-20, current: {self.num_questions}) [b to cancel]: ")
+                    if new_val.lower() == 'b':
+                        break
+
+                    # Use validate_range to check numeric and bounds
+                    valid, msg = validate_range(new_val, 1, 20, "Question count")
+                    if not valid:
+                        print(colorize(f"Invalid: {msg}", Colors.YELLOW))
+                        continue
+
+                    # Ensure an integer value
+                    try:
+                        q_int = int(float(new_val))
+                    except (ValueError, TypeError):
+                        print(colorize("Please enter a whole number.", Colors.YELLOW))
+                        continue
+
+                    # Final bounds check after conversion (in case float like 3.5 was provided)
+                    if q_int < 1 or q_int > 20:
+                        print(colorize("Invalid value. Must be an integer between 1 and 20.", Colors.YELLOW))
+                        continue
+
+                    # Apply setting
+                    self.num_questions = q_int
                     try:
                         from app.utils import save_settings
                         self.settings["question_count"] = self.num_questions
@@ -942,10 +1015,9 @@ class SoulSenseCLI:
                         print(colorize("   (This setting is shared with GUI)", Colors.CYAN))
                     except Exception as e:
                         print(f"\n{colorize('Warning:', Colors.YELLOW)} Setting applied for this session but could not save: {e}")
+
                     self.get_input("\nPress Enter to continue...")
-                else:
-                    print("Invalid value. Must be between 5 and 20.")
-                    time.sleep(1)
+                    break
             elif choice == '2':
                 return
 

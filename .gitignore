@@ -56,6 +56,12 @@ logs/
 db/*.db
 *.sqlite
 *.sqlite3
+soulsense_db
+
+# =========================
+# Cache / Runtime files
+# =========================
+cache/
 
 # =========================
 # Jupyter
@@ -109,6 +115,7 @@ __pypackages__/
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
+
 # =========================
 # Data Organization
 # =========================
@@ -126,5 +133,14 @@ models/*.pkl
 models/risk_model_*.pkl
 models/registry/
 
-# Logs
-logs/
+# =========================
+# Additional Exclusions
+# =========================
+confusion_matrix.png
+soulsense_ml_model.pkl
+experiments/
+
+# Test output files
+test_*.txt
+*_output.txt
+*_output_*.txt

@@ -57,7 +57,7 @@ def run_migrations_online() -> None:
     
     # Hardcoded check for the default value in alembic.ini
     # This is safer than checking for 'pytest' in modules
-    DEFAULT_INI_URL = "sqlite:///db/soulsense.db"
+    DEFAULT_INI_URL = "sqlite:///data/soulsense.db"
     
     if ini_url != DEFAULT_INI_URL:
         # It's an override (Test)
@@ -71,7 +71,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, 
+            target_metadata=target_metadata,
+            render_as_batch=True  # Fix for SQLite ALTER limitation
         )
 
         with context.begin_transaction():

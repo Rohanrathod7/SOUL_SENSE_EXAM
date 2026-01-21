@@ -2,13 +2,77 @@ import os
 import json
 import logging
 import copy
+from typing import Dict, Any, Union, Optional, TypeVar, Type, cast, overload
+from dotenv import load_dotenv
+
 from app.exceptions import ConfigurationError
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+# Load environment variables from .env file
+load_dotenv()
+
+BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_PATH: str = os.path.join(BASE_DIR, "config.json")
+
+T = TypeVar("T")
+
+@overload
+def get_env_var(name: str, default: str, var_type: Type[str] = str) -> str: ...
+
+@overload
+def get_env_var(name: str, default: bool, var_type: Type[bool]) -> bool: ...
+
+@overload
+def get_env_var(name: str, default: int, var_type: Type[int]) -> int: ...
+
+@overload
+def get_env_var(name: str, default: float, var_type: Type[float]) -> float: ...
+
+@overload
+def get_env_var(name: str, default: None = None, var_type: Type[str] = str) -> Optional[str]: ...
+
+def get_env_var(name: str, default: Any = None, 
+                var_type: Type[Any] = str) -> Any:
+    """
+    Get an environment variable with SOULSENSE_ prefix.
+    
+    Args:
+        name: Variable name without prefix (e.g., 'DEBUG' for SOULSENSE_DEBUG)
+        default: Default value if not set
+        var_type: Type to convert to (str, bool, int, float)
+    
+    Returns:
+        The environment variable value converted to the specified type
+    """
+    full_name = f"SOULSENSE_{name}"
+    value = os.environ.get(full_name)
+    
+    if value is None:
+        return default
+    
+    # Type conversion
+    if var_type == bool:
+        return value.lower() in ('true', '1', 'yes', 'on')
+    elif var_type == int:
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    elif var_type == float:
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    
+    return value
+
+
+# Environment settings
+ENV: str = get_env_var("ENV", "development")
+DEBUG: bool = get_env_var("DEBUG", False, bool)
+LOG_LEVEL: str = get_env_var("LOG_LEVEL", "INFO")
 
 # Default Configuration
-DEFAULT_CONFIG = {
+DEFAULT_CONFIG: Dict[str, Dict[str, Any]] = {
     "database": {
         "filename": "soulsense.db",
         "path": "db"
@@ -23,7 +87,7 @@ DEFAULT_CONFIG = {
     }
 }
 
-def load_config():
+def load_config() -> Dict[str, Any]:
     """Load configuration from config.json or return defaults."""
     if not os.path.exists(CONFIG_PATH):
         logging.warning(f"Config file not found at {CONFIG_PATH}. Using defaults.")
@@ -44,10 +108,11 @@ def load_config():
     except Exception as e:
         raise ConfigurationError(f"Failed to load config file: {e}", original_exception=e)
 
-def save_config(new_config):
+def save_config(new_config: Dict[str, Any]) -> bool:
     """Save configuration to config.json."""
+    from app.utils.atomic import atomic_write
     try:
-        with open(CONFIG_PATH, "w") as f:
+        with atomic_write(CONFIG_PATH, "w") as f:
             json.dump(new_config, f, indent=4)
         logging.info("Configuration saved successfully.")
         return True
@@ -57,17 +122,17 @@ def save_config(new_config):
         raise ConfigurationError(f"Failed to save configuration: {e}", original_exception=e)
 
 # Load Config on Import
-_config = load_config()
+_config: Dict[str, Any] = load_config()
 
 # Expose Settings
 # Expose Settings
-DB_DIR_NAME = _config["database"]["path"]
-DB_FILENAME = _config["database"]["filename"]
+DB_DIR_NAME: str = _config["database"]["path"]
+DB_FILENAME: str = _config["database"]["filename"]
 
 # Directory Definitions
-DATA_DIR = os.path.join(BASE_DIR, "data")
-LOG_DIR = os.path.join(BASE_DIR, "logs")
-MODELS_DIR = os.path.join(BASE_DIR, "models")
+DATA_DIR: str = os.path.join(BASE_DIR, "data")
+LOG_DIR: str = os.path.join(BASE_DIR, "logs")
+MODELS_DIR: str = os.path.join(BASE_DIR, "models")
 
 # Ensure directories exist
 for directory in [DATA_DIR, LOG_DIR, MODELS_DIR]:
@@ -78,32 +143,57 @@ for directory in [DATA_DIR, LOG_DIR, MODELS_DIR]:
             pass
 
 # Calculated Paths
-# If DB_DIR_NAME is just a name (e.g. "db"), put it in DATA_DIR?
-# Or keep existing logic but default to Data?
-# Let's map "db" to DATA_DIR for simplicity if it matches default.
-if DB_DIR_NAME == "db":
+# Environment variable takes precedence, then config.json, then defaults
+_env_db_path = get_env_var("DB_PATH")
+
+if _env_db_path:
+    # Environment variable override - can be absolute or relative to BASE_DIR
+    if os.path.isabs(_env_db_path):
+        DB_PATH: str = _env_db_path
+    else:
+        DB_PATH = os.path.join(BASE_DIR, _env_db_path)
+elif DB_DIR_NAME == "db":
+    # Default: put it in DATA_DIR
     DB_PATH = os.path.join(DATA_DIR, DB_FILENAME)
 else:
-    # Allow custom path relative to BASE_DIR if specified in config.json
+    # Custom path relative to BASE_DIR if specified in config.json
     DB_PATH = os.path.join(BASE_DIR, DB_DIR_NAME, DB_FILENAME)
 
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+# Database Configuration
+DATABASE_TYPE: str = get_env_var("DATABASE_TYPE", "sqlite")
 
-
-
-# Ensure DB Directory Exists
-if not os.path.exists(os.path.dirname(DB_PATH)):
-
-    try:
-        os.makedirs(os.path.dirname(DB_PATH))
-    except OSError:
-        pass # Handle race condition or permission error
+if DATABASE_TYPE == "postgresql":
+    DB_HOST: str = get_env_var("DB_HOST", "localhost")
+    DB_PORT: int = get_env_var("DB_PORT", 5432, int)
+    DB_NAME: str = get_env_var("DB_NAME", "soulsense")
+    DB_USER: str = get_env_var("DB_USER", "postgres")
+    DB_PASSWORD: str = get_env_var("DB_PASSWORD", "password")
+    DATABASE_URL: str = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+else:
+    DATABASE_URL: str = f"sqlite:///{DB_PATH}"
+    # Ensure DB Directory Exists for SQLite
+    if not os.path.exists(os.path.dirname(DB_PATH)):
+        try:
+            os.makedirs(os.path.dirname(DB_PATH))
+        except OSError:
+            pass # Handle race condition or permission error
 
 # UI Settings
-THEME = _config["ui"]["theme"]
+THEME: str = _config["ui"]["theme"]
 
-# Feature Toggles
-ENABLE_JOURNAL = _config["features"]["enable_journal"]
-ENABLE_ANALYTICS = _config["features"]["enable_analytics"]
+# Feature Toggles (env vars take precedence over config file)
+_cfg_journal = _config["features"]["enable_journal"]
+_cfg_analytics = _config["features"]["enable_analytics"]
 
-APP_CONFIG = _config
+ENABLE_JOURNAL: bool = get_env_var("ENABLE_JOURNAL", _cfg_journal, bool)
+ENABLE_ANALYTICS: bool = get_env_var("ENABLE_ANALYTICS", _cfg_analytics, bool)
+
+APP_CONFIG: Dict[str, Any] = _config
+
+# Feature Flags Manager
+# Import here to avoid circular imports since feature_flags may import from config
+try:
+    from app.feature_flags import feature_flags as FEATURE_FLAGS
+except ImportError:
+    FEATURE_FLAGS = None  # type: ignore
+

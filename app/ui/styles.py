@@ -7,27 +7,36 @@ import tkinter as tk
 from tkinter import ttk
 
 
+from app.constants import (
+    FONT_FAMILY_PRIMARY, FONT_FAMILY_SECONDARY, FONT_FAMILY_FALLBACK,
+    FONT_SIZE_XS, FONT_SIZE_SM, FONT_SIZE_MD, FONT_SIZE_LG, 
+    FONT_SIZE_XL, FONT_SIZE_XXL, FONT_SIZE_HERO,
+    PADDING_XS, PADDING_SM, PADDING_MD, PADDING_LG, PADDING_XL, PADDING_XXL,
+    ANIM_FAST_MS, ANIM_NORMAL_MS, ANIM_SLOW_MS
+)
+
+
 class DesignTokens:
     """Centralized design tokens for consistent styling"""
     
-    # Typography
-    FONT_FAMILY = "Segoe UI"
-    FONT_FAMILY_FALLBACK = "Arial"
+    # Typography (Mapped to Constants)
+    FONT_FAMILY = FONT_FAMILY_PRIMARY
+    FONT_FAMILY_FALLBACK = FONT_FAMILY_FALLBACK
     
-    FONT_SIZE_XS = 10
-    FONT_SIZE_SM = 12
-    FONT_SIZE_MD = 14
-    FONT_SIZE_LG = 18
-    FONT_SIZE_XL = 24
-    FONT_SIZE_XXL = 32
-    FONT_SIZE_HERO = 48
+    FONT_SIZE_XS = FONT_SIZE_XS
+    FONT_SIZE_SM = FONT_SIZE_SM
+    FONT_SIZE_MD = FONT_SIZE_MD
+    FONT_SIZE_LG = FONT_SIZE_LG
+    FONT_SIZE_XL = FONT_SIZE_XL
+    FONT_SIZE_XXL = FONT_SIZE_XXL
+    FONT_SIZE_HERO = FONT_SIZE_HERO
     
-    # Spacing
-    SPACING_XS = 4
-    SPACING_SM = 8
-    SPACING_MD = 16
+    # Spacing (Mapped to Constants, with fallback/alias if needed)
+    SPACING_XS = PADDING_XS
+    SPACING_SM = PADDING_SM
+    SPACING_MD = 16 # Not in standard constants yet, keeping hardcoded or need update
     SPACING_LG = 24
-    SPACING_XL = 32
+    SPACING_XL = 40
     SPACING_XXL = 48
     
     # Border Radius (for canvas-based rounded elements)
@@ -40,9 +49,9 @@ class DesignTokens:
     SHADOW_COLOR = "#00000020"
     
     # Animation durations (ms)
-    ANIM_FAST = 150
-    ANIM_NORMAL = 300
-    ANIM_SLOW = 500
+    ANIM_FAST = ANIM_FAST_MS
+    ANIM_NORMAL = ANIM_NORMAL_MS
+    ANIM_SLOW = 500 # Keep custom if not in constants
 
 
 class ColorSchemes:
@@ -119,6 +128,11 @@ class ColorSchemes:
         "sidebar_hover": "#2563EB", # Darker Blue
         "sidebar_active": "#1D4ED8", # Even Darker
         "sidebar_divider": "#60A5FA",
+        
+        "input_bg": "#F8FAFC",
+        "input_fg": "#0F172A", 
+        "input_border": "#E2E8F0",
+        "accent": "#F59E0B", # Added for analytics card missing
         
         "card_bg": "#FFFFFF",
         "card_border": "#E2E8F0",
@@ -197,6 +211,11 @@ class ColorSchemes:
         "sidebar_active": "#475569",
         "sidebar_divider": "#334155",
         
+        "input_bg": "#0F172A",
+        "input_fg": "#F8FAFC", 
+        "input_border": "#334155",
+        "accent": "#F59E0B", # Added for analytics card
+        
         "card_bg": "#1E293B",
         "card_border": "#334155",
         "card_shadow": "#00000066",
@@ -225,7 +244,6 @@ class UIStyles:
         font_size = sizes.get(size, self.tokens.FONT_SIZE_MD)
         font_weight = "bold" if weight == "bold" else ""
         return (self.tokens.FONT_FAMILY, font_size, font_weight) if font_weight else (self.tokens.FONT_FAMILY, font_size)
-
     def apply_theme(self, theme_name):
         """Apply the selected theme to the application"""
         self.app.current_theme = theme_name
@@ -260,31 +278,67 @@ class UIStyles:
         """Configure ttk styles for modern look"""
         style = ttk.Style()
         
+        # PROACTIVE FIX: Force 'clam' theme to respect custom background colors
+        # Standard Windows themes (vista/xpnative) often ignore custom fieldbackgrounds.
+        try:
+            style.theme_use('clam')
+        except tk.TclError:
+            pass # Fallback if clam unavailable
+        
+        # General background fix for clam
+        style.configure(".", background=self.app.colors["bg"], foreground=self.app.colors["fg"])
+
         # Progress bar style
         style.configure(
             "Premium.Horizontal.TProgressbar",
             troughcolor=self.app.colors["bg_secondary"],
             background=self.app.colors["primary"],
-            thickness=8
+            thickness=8,
+            borderwidth=0
         )
         
         # Notebook (Tab) style
         style.configure(
             "Premium.TNotebook",
             background=self.app.colors["bg"],
-            borderwidth=0
+            borderwidth=0,
+            tabmargins=[0, 0, 0, 0]
         )
         style.configure(
             "Premium.TNotebook.Tab",
             background=self.app.colors["surface"],
             foreground=self.app.colors["text_secondary"],
             padding=[16, 8],
-            font=self.get_font("md")
+            font=self.get_font("md"),
+            borderwidth=0
         )
         style.map(
             "Premium.TNotebook.Tab",
             background=[("selected", self.app.colors["primary"])],
             foreground=[("selected", self.app.colors["text_inverse"])]
+        )
+        
+        # Combobox Style
+        # Clam theme uses fieldbackground for the input area
+        style.configure(
+            "TCombobox",
+            fieldbackground=self.app.colors["entry_bg"],
+            background=self.app.colors["bg_secondary"], # Arrow area
+            foreground=self.app.colors["text_primary"],
+            arrowcolor=self.app.colors["text_primary"],
+            selectbackground=self.app.colors["primary"],
+            selectforeground=self.app.colors["text_inverse"],
+            borderwidth=1,
+            relief="flat"
+        )
+        
+        # We need to being very specific for Clam
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", self.app.colors["entry_bg"]), ("disabled", self.app.colors["bg_tertiary"])],
+            selectbackground=[("readonly", self.app.colors["entry_bg"]), ("!focus", self.app.colors["entry_bg"])],
+            selectforeground=[("readonly", self.app.colors["text_primary"]), ("!focus", self.app.colors["text_primary"])],
+            foreground=[("readonly", self.app.colors["text_primary"]), ("disabled", self.app.colors["text_secondary"])]
         )
 
     def create_widget(self, widget_type, *args, **kwargs):

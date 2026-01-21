@@ -13,10 +13,11 @@ import json
 import os
 import sqlite3
 import numpy as np
+from typing import Optional, Dict, List, Any, Tuple
 
 from app.i18n_manager import get_i18n
 from app.models import Score, JournalEntry, SatisfactionRecord
-from app.db import get_session, get_connection
+from app.db import get_connection, safe_db_context
 from app.analysis.time_based_analysis import time_analyzer
 
 # Import emotional profile clustering
@@ -34,7 +35,7 @@ except ImportError:
 
 
 class AnalyticsDashboard:
-    def __init__(self, parent_root, username, colors=None, theme="light"):
+    def __init__(self, parent_root: tk.Widget, username: str, colors: Optional[Dict[str, str]] = None, theme: str = "light") -> None:
         self.parent_root = parent_root
         self.username = username
         self.benchmarks = self.load_benchmarks()
@@ -53,7 +54,7 @@ class AnalyticsDashboard:
                 "border": "#334155" if theme == "dark" else "#E2E8F0"
             }
 
-    def load_benchmarks(self):
+    def load_benchmarks(self) -> Optional[Dict[str, Any]]:
         """Load population benchmarks from JSON"""
         try:
             with open("app/benchmarks.json", "r") as f:
@@ -61,35 +62,77 @@ class AnalyticsDashboard:
         except Exception:
             return None
         
-    def open_dashboard(self):
-        """Open analytics dashboard with theme support"""
+    def _create_scrollable_frame(self, parent: tk.Widget) -> tk.Frame:
+        """Create a consistent scrollable frame for tabs (Hidden Scrollbar)"""
+        container = tk.Frame(parent, bg=self.colors.get("bg", "#FFFFFF"))
+        container.pack(fill="both", expand=True)
+        
+        canvas = tk.Canvas(container, bg=self.colors.get("bg", "#FFFFFF"), highlightthickness=0)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors.get("bg", "#FFFFFF"))
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        # Ensure inner frame fills width
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        
+        def _on_frame_configure(event):
+            # Ensure canvas items exist before config
+            if canvas.find_all():
+                canvas.itemconfig(canvas.find_all()[0], width=event.width)
+        canvas.bind("<Configure>", _on_frame_configure)
+        
+        # NO SCROLLBAR VISIBLE (User Request)
+        canvas.pack(side="left", fill="both", expand=True)
+        
+        # Mousewheel binding - Conditional Scrolling
+        def _on_mousewheel(event):
+            try:
+                # Only scroll if content exceeds view
+                if scrollable_frame.winfo_reqheight() > canvas.winfo_height():
+                    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            except: pass
+
+        def _bind(e): 
+            try: canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            except: pass
+        def _unbind(e): 
+            try: canvas.unbind_all("<MouseWheel>")
+            except: pass
+        
+        # Bind only when hovering
+        canvas.bind("<Enter>", _bind)
+        canvas.bind("<Leave>", _unbind)
+        
+        return scrollable_frame
+
+    def render_dashboard(self) -> None:
+        """Render dashboard embedded in parent_root"""
         colors = self.colors
         
-        dashboard = tk.Toplevel(self.parent_root)
-        dashboard.title(self.i18n.get("dashboard.title"))
-        dashboard.geometry("950x750")
-        dashboard.configure(bg=colors.get("bg", "#0F172A"))
+        # Use parent_root directly as the container (Embedded Mode)
+        dashboard = self.parent_root
         
-        # Header
-        header = tk.Frame(dashboard, bg=colors.get("primary", "#3B82F6"))
-        header.pack(fill="x")
+        # Header (Hero Style for Web feel)
+        header_frame = tk.Frame(dashboard, bg=colors["bg"], pady=20)
+        header_frame.pack(fill="x", padx=20)
         
-        tk.Label(
-            header,
-            text=f"📊 {self.i18n.get('dashboard.analytics')}", 
-            font=("Segoe UI", 18, "bold"),
-            bg=colors.get("primary", "#3B82F6"),
-            fg="white"
-        ).pack(pady=15)
-        
+        tk.Label(header_frame, text=f"📊 {self.i18n.get('dashboard.analytics')}", 
+                font=("Segoe UI", 24, "bold"), bg=colors["bg"], 
+                fg=colors["text_primary"]).pack(side="left")
+
         # Configure ttk style for dark/light theme
         style = ttk.Style()
         if self.theme == "dark":
             style.configure("TNotebook", background=colors.get("bg", "#0F172A"))
             style.configure("TFrame", background=colors.get("bg", "#0F172A"))
+            style.map("TNotebook.Tab", background=[("selected", colors.get("surface", "#1E293B"))], 
+                      foreground=[("selected", colors.get("text_primary", "#fff"))])
         
         notebook = ttk.Notebook(dashboard)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=(10, 20))
         
         # Correlation Analysis Tab
         correlation_frame = ttk.Frame(notebook)
@@ -131,126 +174,230 @@ class AnalyticsDashboard:
         satisfaction_frame = ttk.Frame(notebook)
         notebook.add(satisfaction_frame, text="💼 Satisfaction")
         self.show_satisfaction_analytics(satisfaction_frame)
+
+    def show_wellbeing_analytics(self, parent: tk.Widget) -> None:
+        """Show comprehensive health and wellbeing analytics (PR #7)"""
+        parent = self._create_scrollable_frame(parent)
+        
+        # Get data including new PR #6 fields
+        conn = get_connection()
+        try:
+            # Check if columns exist first to avoid errors during dev
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(journal_entries)")
+            columns = [c[1] for c in cursor.fetchall()]
+            
+            if 'screen_time_mins' not in columns:
+                tk.Label(parent, text="Database schema update required (Missing v2 columns)", fg="red").pack()
+                return
+
+            query = """
+                SELECT entry_date, sleep_hours, energy_level, stress_level, screen_time_mins 
+                FROM journal_entries 
+                WHERE username = ? 
+                ORDER BY entry_date
+            """
+            cursor.execute(query, (self.username,))
+            data = cursor.fetchall()
+        finally:
+            conn.close()
+
+        if not data:
+            tk.Label(parent, text=self.i18n.get("journal.no_entries"), font=("Segoe UI", 12)).pack(pady=50)
+            return
+
+        # Parse data
+        dates = [datetime.strptime(row[0].split(' ')[0], "%Y-%m-%d") for row in data]
+        sleep = [row[1] if row[1] is not None else 0 for row in data]
+        energy = [row[2] if row[2] is not None else 0 for row in data]
+        stress = [row[3] if row[3] is not None else 0 for row in data]
+        screen = [row[4] if row[4] is not None else 0 for row in data]
+        
+        # --- 1. Weekly Averages Cards ---
+        cards_frame = tk.Frame(parent, bg=self.colors["bg"])
+        cards_frame.pack(fill="x", padx=10, pady=10)
+        
+        def create_card(title, value, unit, color):
+            f = tk.Frame(cards_frame, bg=self.colors["surface"], bd=1, relief="ridge")
+            f.pack(side="left", expand=True, fill="both", padx=5)
+            tk.Label(f, text=title, font=("Segoe UI", 10), bg=self.colors["surface"], fg=self.colors["text_secondary"]).pack(pady=(10,0))
+            tk.Label(f, text=f"{value:.1f}", font=("Segoe UI", 20, "bold"), bg=self.colors["surface"], fg=color).pack()
+            tk.Label(f, text=unit, font=("Segoe UI", 8), bg=self.colors["surface"], fg=self.colors["text_secondary"]).pack(pady=(0,10))
+
+        avg_stress = sum(stress)/len(stress) if stress else 0
+        avg_screen = sum(screen)/len(screen) if screen else 0
+        avg_sleep = sum(sleep)/len(sleep) if sleep else 0
+        
+        create_card("Avg Stress", avg_stress, "/ 10", "#EF4444" if avg_stress > 7 else "#22C55E")
+        create_card("Screen Time", avg_screen/60, "hours/day", "#F59E0B" if avg_screen > 240 else "#3B82F6")
+        create_card("Avg Sleep", avg_sleep, "hours", "#8B5CF6")
+
+        # --- 2. Matplotlib Visualization (Modern Style) ---
+        viz_frame = tk.Frame(parent, bg=self.colors["bg"])
+        viz_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        fig = Figure(figsize=(10, 8), dpi=100, facecolor=self.colors["bg"])
+        
+        # Plot 1: Wellbeing Trends (Multi-line with modern styling)
+        ax1 = fig.add_subplot(211)
+        ax1.set_facecolor(self.colors.get("surface", "#fff"))
+        
+        x_vals = range(len(dates))
+        ax1.plot(x_vals, stress, 'o-', color='#EF4444', label='🔴 Stress', linewidth=2.5, markersize=8)
+        ax1.plot(x_vals, energy, 's-', color='#22C55E', label='⚡ Energy', linewidth=2.5, markersize=8)
+        ax1.plot(x_vals, sleep, '^-', color='#8B5CF6', label='💤 Sleep (hrs)', linewidth=2.5, markersize=8)
+        
+        ax1.set_title('📊 Wellbeing Trends Over Time', fontsize=14, fontweight='bold', color=self.colors.get("text_primary", "#000"), pad=10)
+        ax1.legend(loc='upper right', framealpha=0.9, fontsize=10)
+        ax1.grid(True, alpha=0.3, linestyle='--')
+        ax1.set_ylabel('Value', fontsize=10, color=self.colors.get("text_secondary", "#666"))
+        ax1.tick_params(colors=self.colors.get("text_secondary", "#666"))
+        for spine in ax1.spines.values(): 
+            spine.set_visible(False)
+
+        # Plot 2: Stress vs Screen Time (Scatter with enhanced colors)
+        ax2 = fig.add_subplot(212)
+        ax2.set_facecolor(self.colors.get("surface", "#fff"))
+        
+        # Color points by Energy level with a vibrant colormap
+        sc = ax2.scatter(screen, stress, c=energy, cmap='RdYlGn', s=150, alpha=0.85, edgecolors='white', linewidths=1.5)
+        ax2.set_xlabel('📱 Screen Time (mins)', fontsize=11, color=self.colors.get("text_secondary", "#666"))
+        ax2.set_ylabel('😰 Stress Level', fontsize=11, color=self.colors.get("text_secondary", "#666"))
+        ax2.set_title('📈 Stress vs. Screen Time Correlation', fontsize=14, fontweight='bold', color=self.colors.get("text_primary", "#000"), pad=10)
+        
+        cbar = fig.colorbar(sc, ax=ax2, shrink=0.8)
+        cbar.set_label('⚡ Energy', fontsize=10)
+        
+        ax2.grid(True, alpha=0.3, linestyle='--')
+        ax2.tick_params(colors=self.colors.get("text_secondary", "#666"))
+        for spine in ax2.spines.values(): 
+            spine.set_visible(False)
+        
+        fig.tight_layout(pad=2.0)
+        
+        canvas = FigureCanvasTkAgg(fig, viz_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
         
     def show_satisfaction_analytics(self, parent):
         """Show satisfaction analytics"""
+        parent = self._create_scrollable_frame(parent)
         # Fetch satisfaction data
-        session = get_session()
         try:
-            records = session.query(SatisfactionRecord).filter(
-                SatisfactionRecord.username == self.username
-            ).order_by(SatisfactionRecord.timestamp.desc()).all()
-            
-            if not records:
-                tk.Label(parent, 
-                        text="No satisfaction data available.\n\n"
-                             "Complete a satisfaction survey to see your trends!",
-                        font=("Arial", 14)).pack(pady=50)
-                return
-            
-            # Title
-            tk.Label(parent, 
-                    text="📊 Work/Study Satisfaction Trends",
-                    font=("Arial", 16, "bold")).pack(pady=10)
-            
-            # Overall stats
-            stats_frame = tk.Frame(parent, bg="#f0f9ff", relief=tk.RIDGE, bd=2)
-            stats_frame.pack(fill="x", padx=20, pady=10)
-            
-            avg_score = sum(r.satisfaction_score for r in records) / len(records)
-            latest = records[0].satisfaction_score
-            
-            tk.Label(stats_frame, 
-                    text=f"Latest Score: {latest}/10 | Average: {avg_score:.1f}/10 | Total Surveys: {len(records)}",
-                    font=("Arial", 12, "bold"),
-                    bg="#f0f9ff").pack(pady=10)
-            
-            # Create matplotlib chart
-            fig = Figure(figsize=(8, 4), dpi=100)
-            ax = fig.add_subplot(111)
-            
-            # Plot satisfaction scores over time
-            dates = [datetime.fromisoformat(r.timestamp) for r in records]
-            scores = [r.satisfaction_score for r in records]
-            
-            ax.plot(dates, scores, 'o-', color='#8B5CF6', linewidth=2, markersize=8)
-            ax.fill_between(dates, scores, alpha=0.2, color='#8B5CF6')
-            ax.set_xlabel('Date')
-            ax.set_ylabel('Satisfaction Score (1-10)')
-            ax.set_title('Satisfaction Trend Over Time')
-            ax.grid(True, alpha=0.3)
-            
-            # Format x-axis dates
-            fig.autofmt_xdate()
-            
-            # Embed in tkinter
-            canvas = FigureCanvasTkAgg(fig, parent)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
-            
-            # Factors analysis
-            factors_frame = tk.Frame(parent)
-            factors_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
-            
-            tk.Label(factors_frame,
-                    text="📈 Top Factors Affecting Your Satisfaction",
-                    font=("Arial", 14, "bold")).pack(anchor="w", pady=10)
-            
-            # Analyze common factors
-            positive_counts = {}
-            negative_counts = {}
-            
-            for record in records:
-                if record.positive_factors:
-                    factors = json.loads(record.positive_factors)
-                    for factor in factors:
-                        positive_counts[factor] = positive_counts.get(factor, 0) + 1
+            with safe_db_context() as session:
+                records = session.query(SatisfactionRecord).filter(
+                    SatisfactionRecord.username == self.username
+                ).order_by(SatisfactionRecord.timestamp.desc()).all()
                 
-                if record.negative_factors:
-                    factors = json.loads(record.negative_factors)
-                    for factor in factors:
-                        negative_counts[factor] = negative_counts.get(factor, 0) + 1
-            
-            # Display top factors
-            cols_frame = tk.Frame(factors_frame)
-            cols_frame.pack(fill=tk.BOTH, expand=True)
-            
-            # Positive factors column
-            pos_frame = tk.Frame(cols_frame, relief=tk.GROOVE, bd=1)
-            pos_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=(0, 5))
-            
-            tk.Label(pos_frame, text="✅ Strengths", 
-                    font=("Arial", 12, "bold")).pack(pady=10)
-            
-            for factor, count in sorted(positive_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
-                percentage = (count / len(records)) * 100
-                tk.Label(pos_frame, 
-                        text=f"• {factor} ({percentage:.0f}% of surveys)",
-                        font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
-            
-            # Negative factors column
-            neg_frame = tk.Frame(cols_frame, relief=tk.GROOVE, bd=1)
-            neg_frame.pack(side="right", fill=tk.BOTH, expand=True, padx=(5, 0))
-            
-            tk.Label(neg_frame, text="⚠️ Challenges", 
-                    font=("Arial", 12, "bold")).pack(pady=10)
-            
-            for factor, count in sorted(negative_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
-                percentage = (count / len(records)) * 100
-                tk.Label(neg_frame, 
-                        text=f"• {factor} ({percentage:.0f}% of surveys)",
-                        font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
+                if not records:
+                    tk.Label(parent, 
+                            text="No satisfaction data available.\n\n"
+                                 "Complete a satisfaction survey to see your trends!",
+                            font=("Arial", 14)).pack(pady=50)
+                    return
+                
+                # Title
+                tk.Label(parent, 
+                        text="📊 Work/Study Satisfaction Trends",
+                        font=("Arial", 16, "bold")).pack(pady=10)
+                
+                # Overall stats
+                stats_frame = tk.Frame(parent, bg="#f0f9ff", relief=tk.RIDGE, bd=2)
+                stats_frame.pack(fill="x", padx=20, pady=10)
+                
+                avg_score = sum(r.satisfaction_score for r in records) / len(records)
+                latest = records[0].satisfaction_score
+                
+                tk.Label(stats_frame, 
+                        text=f"Latest Score: {latest}/10 | Average: {avg_score:.1f}/10 | Total Surveys: {len(records)}",
+                        font=("Arial", 12, "bold"),
+                        bg="#f0f9ff").pack(pady=10)
+                
+                # Create matplotlib chart
+                fig = Figure(figsize=(8, 4), dpi=100)
+                ax = fig.add_subplot(111)
+                
+                # Plot satisfaction scores over time
+                dates = [datetime.fromisoformat(r.timestamp) for r in records]
+                scores = [r.satisfaction_score for r in records]
+                
+                ax.plot(dates, scores, 'o-', color='#8B5CF6', linewidth=2, markersize=8)
+                ax.fill_between(dates, scores, alpha=0.2, color='#8B5CF6')
+                ax.set_xlabel('Date')
+                ax.set_ylabel('Satisfaction Score (1-10)')
+                ax.set_title('Satisfaction Trend Over Time')
+                ax.grid(True, alpha=0.3)
+                
+                # Format x-axis dates
+                fig.autofmt_xdate()
+                
+                # Embed in tkinter
+                canvas = FigureCanvasTkAgg(fig, parent)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+                
+                # Factors analysis
+                factors_frame = tk.Frame(parent)
+                factors_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+                
+                tk.Label(factors_frame,
+                        text="📈 Top Factors Affecting Your Satisfaction",
+                        font=("Arial", 14, "bold")).pack(anchor="w", pady=10)
+                
+                # Analyze common factors
+                positive_counts = {}
+                negative_counts = {}
+                
+                for record in records:
+                    if record.positive_factors:
+                        factors = json.loads(record.positive_factors)
+                        for factor in factors:
+                            positive_counts[factor] = positive_counts.get(factor, 0) + 1
+                    
+                    if record.negative_factors:
+                        factors = json.loads(record.negative_factors)
+                        for factor in factors:
+                            negative_counts[factor] = negative_counts.get(factor, 0) + 1
+                
+                # Display top factors
+                cols_frame = tk.Frame(factors_frame)
+                cols_frame.pack(fill=tk.BOTH, expand=True)
+                
+                # Positive factors column
+                pos_frame = tk.Frame(cols_frame, relief=tk.GROOVE, bd=1)
+                pos_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=(0, 5))
+                
+                tk.Label(pos_frame, text="✅ Strengths", 
+                        font=("Arial", 12, "bold")).pack(pady=10)
+                
+                for factor, count in sorted(positive_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
+                    percentage = (count / len(records)) * 100
+                    tk.Label(pos_frame, 
+                            text=f"• {factor} ({percentage:.0f}% of surveys)",
+                            font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
+                
+                # Negative factors column
+                neg_frame = tk.Frame(cols_frame, relief=tk.GROOVE, bd=1)
+                neg_frame.pack(side="right", fill=tk.BOTH, expand=True, padx=(5, 0))
+                
+                tk.Label(neg_frame, text="⚠️ Challenges", 
+                        font=("Arial", 12, "bold")).pack(pady=10)
+                
+                for factor, count in sorted(negative_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
+                    percentage = (count / len(records)) * 100
+                    tk.Label(neg_frame, 
+                            text=f"• {factor} ({percentage:.0f}% of surveys)",
+                            font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
             
         except Exception as e:
             tk.Label(parent, 
                     text=f"Error loading satisfaction data: {str(e)}",
                     font=("Arial", 12), fg="red").pack(pady=50)
-        finally:
-            session.close()
     
     # ========== NEW CORRELATION ANALYSIS METHOD ==========
     def show_correlation_analysis(self, parent):
         """Show correlation analysis between EQ scores"""
+        parent = self._create_scrollable_frame(parent)
         # Title
         tk.Label(parent, text=self.i18n.get("dashboard.correlation_title"), 
                 font=("Arial", 16, "bold")).pack(pady=10)
@@ -271,7 +418,7 @@ class AnalyticsDashboard:
         
         # Text area for results
         self.correlation_text = tk.Text(parent, wrap=tk.WORD, height=15, 
-                                       font=("Arial", 11))
+                                       font=("Arial", 11), state='disabled')
         self.correlation_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # Visualization frame
@@ -282,7 +429,11 @@ class AnalyticsDashboard:
         """Run correlation analysis"""
         try:
             # Clear previous content
-            self.correlation_text.delete(1.0, tk.END)
+            if self.correlation_text:
+                self.correlation_text.configure(state='normal') # Enable for updates
+                self.correlation_text.delete(1.0, tk.END)
+            else:
+                return
             
             # Clear previous visualization
             for widget in self.correlation_viz_frame.winfo_children():
@@ -319,6 +470,8 @@ class AnalyticsDashboard:
                 self.correlation_text.insert(tk.END, 
                     "⚠️ Need at least 2 EQ tests for correlation analysis.\n\n"
                     "Complete more tests and try again!")
+                if self.correlation_text:
+                     self.correlation_text.configure(state='disabled')
                 return
             
             scores = [row[0] for row in data]
@@ -457,16 +610,23 @@ class AnalyticsDashboard:
             fig.tight_layout()
             
             # Embed in tkinter
-            canvas = FigureCanvasTkAgg(fig, self.correlation_viz_frame)
+            canvas = FigureCanvasTkAgg(fig, master=self.correlation_viz_frame)
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+            # Make read-only
+            if self.correlation_text:
+                 self.correlation_text.configure(state='disabled')
             
         except Exception as e:
             self.correlation_text.insert(tk.END, f"⚠️ Could not create visualizations: {str(e)}\n")
+            if self.correlation_text:
+                 self.correlation_text.configure(state='disabled')
     
     # ========== EXISTING METHODS (UPDATED) ==========
     def show_eq_trends(self, parent):
         """Show EQ score trends with matplotlib graph"""
+        parent = self._create_scrollable_frame(parent)
         # Set colors
         colors = self.colors
         bg_color = colors.get("bg", "#F8FAFC")
@@ -475,7 +635,7 @@ class AnalyticsDashboard:
         text_secondary = colors.get("text_secondary", "#64748B")
         
         # Configure parent
-        parent.configure(style="TFrame")
+        # parent.configure(style="TFrame")
         
         conn = get_connection()
         cursor = conn.cursor()
@@ -769,6 +929,7 @@ class AnalyticsDashboard:
 
     def show_journal_analytics(self, parent):
         """Show journal analytics"""
+        parent = self._create_scrollable_frame(parent)
         conn = get_connection() # Use centralized connection logic
         cursor = conn.cursor()
         
@@ -834,6 +995,7 @@ class AnalyticsDashboard:
         
     def show_insights(self, parent):
         """Show personalized insights"""
+        parent = self._create_scrollable_frame(parent)
         tk.Label(parent, text="🔍 Your Insights", font=("Arial", 14, "bold")).pack(pady=10)
         
         insights_text = tk.Text(parent, wrap=tk.WORD, font=("Arial", 11), bg="#f8f9fa")
@@ -849,6 +1011,7 @@ class AnalyticsDashboard:
     # ========== EMOTIONAL PROFILE CLUSTERING TAB ==========
     def show_emotional_profile(self, parent):
         """Show emotional profile clustering analysis."""
+        parent = self._create_scrollable_frame(parent)
         if not CLUSTERING_AVAILABLE:
             tk.Label(parent, text="❌ Clustering module not available", 
                     font=("Arial", 14)).pack(pady=50)
@@ -1031,23 +1194,28 @@ class AnalyticsDashboard:
         """Generate insights"""
         insights = []
         
-        session = get_session()
+        scores = []
+        test_sentiments = []
+        journal_sentiments = []
+
         try:
-            # EQ and Sentiment insights from SCORES table
-            eq_rows = session.query(Score.total_score, Score.sentiment_score)\
-                .filter_by(username=self.username)\
-                .order_by(Score.id)\
-                .all()
-            scores = [r[0] for r in eq_rows]
-            test_sentiments = [r[1] for r in eq_rows if r[1] is not None]
-            
-            # Journal insights purely from Journal entries
-            j_rows = session.query(JournalEntry.sentiment_score)\
-                .filter_by(username=self.username)\
-                .all()
-            journal_sentiments = [r[0] for r in j_rows]
-        finally:
-            session.close()
+            with safe_db_context() as session:
+                # EQ and Sentiment insights from SCORES table
+                eq_rows = session.query(Score.total_score, Score.sentiment_score)\
+                    .filter_by(username=self.username)\
+                    .order_by(Score.id)\
+                    .all()
+                scores = [r[0] for r in eq_rows]
+                test_sentiments = [r[1] for r in eq_rows if r[1] is not None]
+                
+                # Journal insights purely from Journal entries
+                j_rows = session.query(JournalEntry.sentiment_score)\
+                    .filter_by(username=self.username)\
+                    .all()
+                journal_sentiments = [r[0] for r in j_rows]
+        except Exception as e:
+            # Log error but continue with empty data to avoid crashing UI
+            print(f"Error generating insights: {e}")
         
         if len(scores) > 1:
             improvement = ((scores[-1] - scores[0]) / scores[0]) * 100 if scores[0] != 0 else 0
@@ -1094,6 +1262,7 @@ class AnalyticsDashboard:
     # ========== WELLBEING ANALYTICS (PR 1.5) ==========
     def show_wellbeing_analytics(self, parent):
         """Show wellbeing analytics (Sleep vs Mood, Work vs Mood)"""
+        parent = self._create_scrollable_frame(parent)
         # Fetch Data
         conn = get_connection()
         cursor = conn.cursor()
