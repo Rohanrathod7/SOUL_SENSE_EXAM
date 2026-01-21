@@ -1,25 +1,26 @@
 # Contributor Activity Dashboard
 
-## Repository: Rohanrathod7/SOUL_SENSE_EXAM
+## Repository: nupurmadaan04/SOUL_SENSE_EXAM
 
-### Open Issues: 9
-### Total PRs: 187
+### Open Issues: 8
+### Total PRs: 196
 
 ### Contributors Activity
 
 | Contributor | Open Issues Created | PRs Created |
 |------------|------------------|------------|
-| nupurmadaan04 | 7 | 0 |
-| Abhijeet-980 | 0 | 11 |
-| Aditya8369 | 0 | 5 |
-| Rohanrathod7 | 0 | 43 |
+| Aditya8369 | 1 | 6 |
+| nupurmadaan04 | 3 | 0 |
+| Abhijeet-980 | 0 | 13 |
+| ssislive | 0 | 23 |
+| Rohanrathod7 | 0 | 45 |
+| harshitak4 | 0 | 1 |
+| Sappymukherjee214 | 0 | 8 |
 | GauravKarakoti | 0 | 1 |
 | yashkhandelwal16 | 0 | 1 |
 | harveenkaur282-web | 0 | 2 |
 | iarmaanx | 0 | 1 |
 | neeru24 | 0 | 44 |
-| Sappymukherjee214 | 0 | 7 |
-| ssislive | 0 | 21 |
 | Dbansal06 | 0 | 1 |
 | RakshithaNagaraju74 | 0 | 1 |
 | VeDaNsH-D | 0 | 11 |
