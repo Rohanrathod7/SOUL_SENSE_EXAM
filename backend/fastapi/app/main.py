@@ -1,13 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
-from .routers import assessments, health
+from .routers import assessments, health, auth, users, profiles
 
 settings = get_settings()
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="SoulSense FastAPI")
+    app = FastAPI(
+        title="SoulSense API",
+        description="Comprehensive REST API for SoulSense EQ Test Platform",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc"
+    )
+    
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -15,7 +22,12 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    # Register routers
     app.include_router(health.router)
+    app.include_router(auth.router, prefix="/auth")
+    app.include_router(users.router)
+    app.include_router(profiles.router)
     app.include_router(assessments.router)
 
     @app.on_event("startup")
