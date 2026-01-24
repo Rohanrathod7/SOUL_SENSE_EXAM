@@ -27,9 +27,12 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-mock pytest-cov flake8
 
-      - name: Type Check with Mypy
-        run: |
-          mypy app/ backend/fastapi/app/
+      - name: Type Check Root App
+        run: mypy app/
+
+      - name: Type Check Backend App
+        run: mypy app/
+        working-directory: ./backend/fastapi
 
       - name: Lint with flake8
         run: |
@@ -38,8 +41,11 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Test with pytest
+      - name: Test Root App
         env:
           DISPLAY: ""
-        run: |
-          pytest tests/ backend/fastapi/tests/unit/
+        run: pytest tests/
+
+      - name: Test Backend App
+        run: pytest tests/unit/
+        working-directory: ./backend/fastapi
