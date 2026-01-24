@@ -12,7 +12,7 @@ Provides authenticated CRUD endpoints for all user profile types:
 from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
-from ..models.schemas import (
+from ..schemas import (
     # User Settings
     UserSettingsCreate,
     UserSettingsUpdate,

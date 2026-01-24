@@ -7,7 +7,7 @@ Provides authenticated CRUD endpoints for user management.
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..models.schemas import (
+from ..schemas import (
     UserResponse,
     UserUpdate,
     UserDetail,

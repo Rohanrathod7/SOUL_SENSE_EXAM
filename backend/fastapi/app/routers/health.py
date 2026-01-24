@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..models.schemas import HealthResponse, ServiceStatus
+from ..schemas import HealthResponse, ServiceStatus
 from ..services.db_service import get_db
 from ..config import get_settings
 

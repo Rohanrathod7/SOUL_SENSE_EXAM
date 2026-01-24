@@ -15,7 +15,7 @@ Endpoints:
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..models.schemas import (
+from ..schemas import (
     SyncSettingCreate,
     SyncSettingUpdate,
     SyncSettingResponse,

@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response as FastApiResponse
 from sqlalchemy.orm import Session
 
-from ..models.schemas import (
+from ..schemas import (
     JournalCreate,
     JournalUpdate,
     JournalResponse,

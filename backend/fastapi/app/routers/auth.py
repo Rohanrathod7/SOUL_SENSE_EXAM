@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 
 from ..config import get_settings
-from ..models.schemas import UserCreate, Token, UserResponse
+from ..schemas import UserCreate, Token, UserResponse
 from ..services.db_service import get_db
 from app.models import User
 import bcrypt
