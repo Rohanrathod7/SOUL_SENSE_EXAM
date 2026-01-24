@@ -13,6 +13,11 @@ load_dotenv()
 BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH: str = os.path.join(BASE_DIR, "config.json")
 
+# Database configuration
+DATA_DIR: str = os.path.join(BASE_DIR, "data")
+DB_PATH: str = os.path.join(DATA_DIR, "soulsense.db")
+DATABASE_URL: str = f"sqlite:///{DB_PATH}"
+
 T = TypeVar("T")
 
 @overload

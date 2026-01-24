@@ -36,7 +36,9 @@ class Settings(BaseSettings):
     )
 
 
-_settings: Settings | None = None
+from typing import Optional
+
+_settings: Optional[Settings] = None
 
 
 def get_settings() -> Settings:
