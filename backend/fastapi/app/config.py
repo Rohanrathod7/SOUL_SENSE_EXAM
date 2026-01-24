@@ -8,8 +8,6 @@ from dotenv import load_dotenv
 from pydantic import Field, field_validator, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from ...core.validators import validate_environment_on_startup, log_environment_summary
-
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 BACKEND_DIR = ROOT_DIR / "backend"
 FASTAPI_DIR = BACKEND_DIR / "fastapi"
@@ -21,6 +19,8 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 if str(FASTAPI_DIR) not in sys.path:
     sys.path.insert(0, str(FASTAPI_DIR))
+
+from backend.core.validators import validate_environment_on_startup, log_environment_summary
 
 load_dotenv(ENV_FILE)
 
