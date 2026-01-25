@@ -11,9 +11,11 @@ def clean_config():
     yield
     importlib.reload(config)
 
-def test_load_config_defaults_missing_file(monkeypatch, clean_config):
+def test_load_config_defaults_missing_file(clean_config, monkeypatch):
     """Test that default config is returned when config.json is missing."""
-    monkeypatch.setattr(os.path, "exists", lambda x: False)
+    # More selective mock to avoid breaking os.makedirs during reload/execution
+    original_exists = os.path.exists
+    monkeypatch.setattr(os.path, "exists", lambda x: False if "config.json" in str(x) else original_exists(x))
     
     # Reload config to re-execute the module-level load_config() call if needed
     # But since we are testing the function directly, we just call it.

@@ -39,6 +39,26 @@ class User(Base):
     personal_profile = relationship("PersonalProfile", uselist=False, back_populates="user", cascade="all, delete-orphan")
     strengths = relationship("UserStrengths", uselist=False, back_populates="user", cascade="all, delete-orphan")
     emotional_patterns = relationship("UserEmotionalPatterns", uselist=False, back_populates="user", cascade="all, delete-orphan")
+    sync_settings = relationship("UserSyncSetting", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserSyncSetting(Base):
+    """Store user-specific sync settings as key-value pairs with version control for conflict detection."""
+    __tablename__ = 'user_sync_settings'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    key = Column(String(100), nullable=False)
+    value = Column(Text, nullable=True)  # JSON-serialized value
+    version = Column(Integer, default=1, nullable=False)  # For optimistic locking
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    
+    user = relationship("User", back_populates="sync_settings")
+    
+    __table_args__ = (
+        Index('idx_sync_user_key', 'user_id', 'key', unique=True),
+    )
 
 class UserSettings(Base):
     __tablename__ = 'user_settings'
@@ -231,6 +251,7 @@ class JournalEntry(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     entry_date = Column(String, default=lambda: datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
     content = Column(Text)
     sentiment_score = Column(Float)
@@ -250,6 +271,11 @@ class JournalEntry(Base):
 
     # Enhanced Journal Extensions: Tagging system
     tags = Column(Text, nullable=True)  # JSON list of tags like ["stress", "gratitude", "relationships"]
+    
+    # Soft delete and status (PR #8)
+    is_deleted = Column(Boolean, default=False)
+    privacy_level = Column(String, default="private") # private, shared, public
+    word_count = Column(Integer, default=0)
 
 class SatisfactionRecord(Base):
     __tablename__ = 'satisfaction_records'

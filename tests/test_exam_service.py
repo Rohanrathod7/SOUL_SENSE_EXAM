@@ -66,17 +66,17 @@ def test_submit_answer_invalid(exam_session):
     with pytest.raises(ValueError, match="Answer must be between 1 and 4"):
         exam_session.submit_answer(5)
 
-@patch('app.db.safe_db_context')
+@patch('app.services.exam_service.safe_db_context')
 def test_exam_completion_flow(mock_safe_db, exam_session, temp_db):  # Add temp_db fixture
     # Mock the database session
     mock_session = MagicMock()
     mock_safe_db.return_value.__enter__ = MagicMock(return_value=mock_session)
-    mock_safe_db. return_value.__exit__ = MagicMock(return_value=False)  # Fix: remove space
+    mock_safe_db.return_value.__exit__ = MagicMock(return_value=False)  # Fix: remove space
     
     # Mock User query for finish_exam
     mock_user = MagicMock()
     mock_user.id = 123
-    mock_session. query.return_value.filter_by.return_value.first. return_value = mock_user
+    mock_session.query.return_value.filter_by.return_value.first.return_value = mock_user
     
     exam_session.start_exam()
     
@@ -86,18 +86,18 @@ def test_exam_completion_flow(mock_safe_db, exam_session, temp_db):  # Add temp_
     exam_session.submit_answer(4)
     
     assert exam_session.is_finished() is True
-    assert exam_session. current_question_index == 3
+    assert exam_session.current_question_index == 3
     
     # Calculate metrics is called inside finish_exam usually, but let's check state
     exam_session.calculate_metrics()
-    assert exam_session. score == 2 + 3 + 4  # Fix: remove space
+    assert exam_session.score == 2 + 3 + 4  # Fix: remove space
     
     # Test finish_exam (DB save) - now properly mocked
     result = exam_session.finish_exam()
     assert result is True
     
     # Verify session operations were called
-    assert mock_session.add. called or mock_session.commit. called
+    assert mock_session.add.called or mock_session.commit.called
     
 def test_timing_tracking(exam_session):
     with patch('app.db.get_connection'):

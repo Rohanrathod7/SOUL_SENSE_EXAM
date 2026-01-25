@@ -3,14 +3,10 @@ from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Optional, Tuple
 from datetime import datetime
-import sys
-from pathlib import Path
 
-# Add project root to path to import models
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
-sys.path.insert(0, str(ROOT_DIR))
+# Import model classes from root_models module (handles namespace collision)
+from app.root_models import Base, Score, Response, Question, QuestionCategory
 
-from app.models import Base, Score, Response, Question, QuestionCategory
 from ..config import get_settings
 
 settings = get_settings()

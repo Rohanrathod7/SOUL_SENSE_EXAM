@@ -19,8 +19,20 @@ def temp_db_url():
     yield url
     
     # Cleanup
+    # On Windows, we need to ensure all connections are closed and garbage collected
+    # to avoid PermissionError (file in use)
+    import gc
+    import time
+    gc.collect()
+    
     if os.path.exists(path):
-        os.remove(path)
+        for _ in range(5):
+            try:
+                os.remove(path)
+                break
+            except OSError:
+                time.sleep(0.5)
+                gc.collect()
 
 def test_migrations_apply_successfully(temp_db_url):
     """

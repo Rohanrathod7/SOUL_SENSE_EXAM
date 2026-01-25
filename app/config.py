@@ -162,15 +162,16 @@ else:
 # Database Configuration
 DATABASE_TYPE: str = get_env_var("DATABASE_TYPE", "sqlite")
 
+DATABASE_URL: str
 if DATABASE_TYPE == "postgresql":
     DB_HOST: str = get_env_var("DB_HOST", "localhost")
     DB_PORT: int = get_env_var("DB_PORT", 5432, int)
     DB_NAME: str = get_env_var("DB_NAME", "soulsense")
     DB_USER: str = get_env_var("DB_USER", "postgres")
     DB_PASSWORD: str = get_env_var("DB_PASSWORD", "password")
-    DATABASE_URL: str = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 else:
-    DATABASE_URL: str = f"sqlite:///{DB_PATH}"
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
     # Ensure DB Directory Exists for SQLite
     if not os.path.exists(os.path.dirname(DB_PATH)):
         try:

@@ -24,7 +24,7 @@ SoulSense now supports multiple languages with easy switching!
 
 ### For Contributors
 
-Want to add your language? See our [I18N Guide](I18N_GUIDE.md) for:
+Want to add your language? See our [I18N Guide](docs/I18N_GUIDE.md) for:
 
 - Step-by-step instructions
 - Translation template
@@ -136,8 +136,48 @@ You can raise an issue on the GitHub repository or contact the project maintaine
     alembic upgrade head
 
     # Seed the question bank
-    python -m scripts.seed_questions_v2
+    python scripts/setup/seed_questions_v2.py
     ```
+
+5.  **Configure Environment Variables:**
+
+    The application now includes robust environment validation on startup.
+
+    **For Development (Default):**
+
+    ```bash
+    # Copy the example environment file
+    cp .env.example .env
+    ```
+
+    The `.env.example` file contains all required and optional variables with sensible defaults for development.
+
+    **For Production/Staging:**
+
+    Set the following required environment variables in your `.env` file:
+
+    ```bash
+    # Required for all environments
+    APP_ENV=production  # or 'staging'
+    DATABASE_URL=postgresql://user:password@host:port/database
+    JWT_SECRET_KEY=your_super_secret_key_here
+
+    # Additional required for staging/production
+    DATABASE_HOST=your_database_host
+    DATABASE_PORT=5432
+    DATABASE_NAME=your_database_name
+    DATABASE_USER=your_database_user
+    DATABASE_PASSWORD=your_secure_password
+    ```
+
+    **Environment Validation:**
+
+    The application will validate all environment variables on startup and fail fast if:
+    - Required variables are missing
+    - Variables have invalid types or values
+    - Database URLs are malformed
+
+    Check the startup logs for a validation summary and any errors or warnings.
 
 ### 3. Running the Application
 
@@ -216,7 +256,7 @@ pip install -r requirements.txt
 alembic upgrade head
 
 # Seed the questions
-python -m scripts.seed_questions_v2
+python scripts/setup/seed_questions_v2.py
 ```
 
 </details>
@@ -333,7 +373,7 @@ python admin_cli.py categories              # View statistics
 
 ### Documentation
 
-See [ADMIN_GUIDE.md](ADMIN_GUIDE.md) for comprehensive documentation.
+See [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) for comprehensive documentation.
 
 ---
 
@@ -341,7 +381,7 @@ See [ADMIN_GUIDE.md](ADMIN_GUIDE.md) for comprehensive documentation.
 
 **🌍 Now available in multiple languages: English, Hindi (हिंदी), and Spanish (Español)!**
 
-The application is grounded in established emotional intelligence theory (Salovey & Mayer, 1990; Goleman, 1995) and incorporates evidence-based approaches for self-report EI assessment (Petrides & Furnham, 2001). For comprehensive academic references, see [RESEARCH_REFERENCES.md](RESEARCH_REFERENCES.md).
+The application is grounded in established emotional intelligence theory (Salovey & Mayer, 1990; Goleman, 1995) and incorporates evidence-based approaches for self-report EI assessment (Petrides & Furnham, 2001). For comprehensive academic references, see [RESEARCH_REFERENCES.md](docs/references/RESEARCH_REFERENCES.md).
 
 ---
 
@@ -400,6 +440,11 @@ The application is grounded in established emotional intelligence theory (Salove
   - Two-step confirmation dialog for safety
   - Removes all user records, profiles, journals, settings, and local files
   - Accessible via Profile → Settings → Data Management
+- **Settings Synchronization (NEW!)**
+  - Sync user preferences and non-sensitive settings across clients
+  - Key-value based API with version-based conflict detection
+  - Integrated with user authentication for data isolation
+  - Accessible via the REST API endpoints
 
 ---
 
@@ -944,11 +989,11 @@ SoulSense provides a comprehensive test fixture system for standardized, reusabl
 
 **Available Fixtures:**
 
-| Category | Fixtures |
-|----------|----------|
+| Category              | Fixtures                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | **Database Entities** | `sample_user`, `sample_user_with_profiles`, `sample_score`, `sample_responses`, `sample_journal_entry`, `sample_question_bank` |
-| **ML Components** | `sample_user_features`, `sample_clustered_features`, `mock_clusterer`, `mock_feature_extractor`, `mock_risk_predictor` |
-| **Utilities** | `temp_db` (isolated database), `isolated_db`, `populated_db` |
+| **ML Components**     | `sample_user_features`, `sample_clustered_features`, `mock_clusterer`, `mock_feature_extractor`, `mock_risk_predictor`         |
+| **Utilities**         | `temp_db` (isolated database), `isolated_db`, `populated_db`                                                                   |
 
 **Factory Classes:**
 

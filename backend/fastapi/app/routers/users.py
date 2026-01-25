@@ -7,7 +7,7 @@ Provides authenticated CRUD endpoints for user management.
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..models.schemas import (
+from ..schemas import (
     UserResponse,
     UserUpdate,
     UserDetail,
@@ -16,28 +16,28 @@ from ..models.schemas import (
 from ..services.user_service import UserService
 from ..services.profile_service import ProfileService
 from ..routers.auth import get_current_user
-from app.db import get_session
-from app.models import User
+from ..services.db_service import get_db
+from app.root_models import User
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(tags=["Users"])
 
 
 def get_user_service():
     """Dependency to get UserService with database session."""
-    session = get_session()
+    db = next(get_db())
     try:
-        yield UserService(session)
+        yield UserService(db)
     finally:
-        session.close()
+        db.close()
 
 
 def get_profile_service():
     """Dependency to get ProfileService with database session."""
-    session = get_session()
+    db = next(get_db())
     try:
-        yield ProfileService(session)
+        yield ProfileService(db)
     finally:
-        session.close()
+        db.close()
 
 
 # ============================================================================

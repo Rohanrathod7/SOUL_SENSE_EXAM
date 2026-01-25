@@ -1,0 +1,123 @@
+name: Auto-Track Issues and Welcome Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome-and-track:
+    runs-on: ubuntu-latest
+    if: github.event.sender.login != 'github-actions[bot]'
+    steps:
+      - name: Welcome New Issue and Guide Contributors
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const author = issue.user.login;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const userIssues = await github.rest.issues.listForRepo({
+              owner, repo,
+              creator: author,
+              state: 'all',
+              per_page: 5
+            });
+
+            const isFirstTimer = userIssues.data.length <= 1;
+
+            let welcomeSection = '';
+            if (isFirstTimer) {
+              welcomeSection = '\n### Welcome, @' + author + '!\n' +
+                'This appears to be your first issue in this repository. We are excited to have you!\n\n' +
+                '**Quick Start:**\n' +
+                '- Read our [Contributing Guide](CONTRIBUTING.md)\n' +
+                '- Join discussions in the comments\n' +
+                '- Need help? Just ask!\n';
+            }
+
+            const assigneeText = issue.assignees.length > 0 
+              ? issue.assignees.map(function(a) { return '@' + a.login; }).join(', ')
+              : '_Unassigned_';
+
+            const labelText = issue.labels.length > 0
+              ? issue.labels.map(function(l) { return '`' + l.name + '`'; }).join(', ')
+              : '_None_';
+
+            const comment = '## Community Coordination\n' +
+              welcomeSection +
+              '**Issue #' + issue.number + '**: ' + issue.title + '\n\n' +
+              '### How to Claim This Issue:\n' +
+              'Simply comment `/assign` to assign yourself!\n\n' +
+              '### Current Status:\n' +
+              '| Field | Value |\n' +
+              '|-------|-------|\n' +
+              '| Assignee | ' + assigneeText + ' |\n' +
+              '| Labels | ' + labelText + ' |\n\n' +
+              '### Available Commands:\n' +
+              '- `/assign` - Claim this issue\n' +
+              '- `/unassign` - Release this issue\n' +
+              '- `/status` - Check your current assignments\n\n' +
+              '---\n' +
+              '_This is an automated message. Happy contributing!_';
+
+            await github.rest.issues.createComment({
+              owner, repo,
+              issue_number: issue.number,
+              body: comment
+            });
+
+      - name: Welcome First-Time PR Contributors
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const userPRs = await github.rest.pulls.list({
+              owner, repo,
+              state: 'all',
+              per_page: 5
+            });
+
+            const authorPRs = userPRs.data.filter(function(p) { return p.user.login === author; });
+            const isFirstPR = authorPRs.length <= 1;
+
+            if (isFirstPR) {
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: pr.number,
+                body: '## Welcome, @' + author + '!\n\n' +
+                  'Thank you for your **first pull request** to this project! We really appreciate your contribution.\n\n' +
+                  '**What happens next:**\n' +
+                  '1. A maintainer will review your PR\n' +
+                  '2. They may request changes or ask questions\n' +
+                  '3. Once approved, your PR will be merged!\n\n' +
+                  '**Tips:**\n' +
+                  '- Make sure your PR description explains what you changed\n' +
+                  '- Link any related issues using "Closes #123"\n' +
+                  '- Be patient - reviews may take a few days\n\n' +
+                  'Thanks for being part of our community!'
+              });
+              
+              try {
+                await github.rest.issues.addLabels({
+                  owner, repo,
+                  issue_number: pr.number,
+                  labels: ['first-time-contributor']
+                });
+              } catch (e) {
+                console.log('Could not add label');
+              }
+            }

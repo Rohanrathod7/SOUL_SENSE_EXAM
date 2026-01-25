@@ -4,22 +4,21 @@ User Service Layer
 Handles CRUD operations for users with proper authorization and validation.
 """
 
-from pathlib import Path
-import sys
 from typing import Optional, List
 from datetime import datetime
-
-# Add root directory to path for imports
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 
-from app.models import User, UserSettings, MedicalProfile, PersonalProfile, UserStrengths, UserEmotionalPatterns, Score
-from app.auth import AuthManager
+# Import models from root_models module (handles namespace collision)
+from app.root_models import User, UserSettings, MedicalProfile, PersonalProfile, UserStrengths, UserEmotionalPatterns, Score
+import bcrypt
+
+
+def hash_password(password: str) -> str:
+    """Hash a password for storing."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 
 class UserService:
@@ -27,7 +26,6 @@ class UserService:
 
     def __init__(self, db: Session):
         self.db = db
-        self.auth_manager = AuthManager()
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Retrieve a user by ID."""
@@ -63,7 +61,7 @@ class UserService:
             )
 
         # Hash password and create user
-        password_hash = self.auth_manager.hash_password(password)
+        password_hash = hash_password(password)
         
         new_user = User(
             username=username,
@@ -117,7 +115,7 @@ class UserService:
 
         # Update password if provided
         if password:
-            user.password_hash = self.auth_manager.hash_password(password)
+            user.password_hash = hash_password(password)
 
         try:
             self.db.commit()
