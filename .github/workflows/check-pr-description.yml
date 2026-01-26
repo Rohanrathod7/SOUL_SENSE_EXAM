@@ -24,6 +24,8 @@ jobs:
             const pr = context.payload.pull_request;
             const body = (pr.body || "").trim();
 
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
+
             const minLength = 50;
             const requiredSections = ["## Summary", "## Description"];
             const placeholders = ["tbd", "todo", "wip", "update this"];
@@ -51,14 +53,22 @@ jobs:
               return;
             }
 
-            const commentBody =
-              "PR description needs improvement:\n\n" +
-              issues.map(i => `- ${i}`).join("\n") +
-              "\n\nPlease update the description.";
+            const errorMessage = "PR description needs improvement:\n" + issues.map(i => `- ${i}`).join("\n");
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              body: commentBody,
-            });
+            if (isFork) {
+              console.log("Fork detected. Skipping comment creation to avoid 403 error.");
+              core.warning(errorMessage);
+              console.log("Issues logged as warnings. Workflow passing for fork.");
+            } else {
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: errorMessage + "\n\nPlease update the description.",
+                });
+              } catch (error) {
+                console.log("Warning: Failed to post comment:", error.message);
+              }
+              core.setFailed(errorMessage);
+            }
