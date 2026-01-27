@@ -16,8 +16,9 @@ class SidebarNav(tk.Frame):
         self.app = app
         self.items = items
         self.on_change = on_change
-        self.buttons = {}
-        self.active_id = None
+        self.is_collapsed = False
+        self.expanded_width = 250
+        self.collapsed_width = 70
         
         # Prevent auto-shrinking
         self.pack_propagate(False)
@@ -29,11 +30,27 @@ class SidebarNav(tk.Frame):
         
     def _render_header(self):
         # User Profile Summary Area
-        header = tk.Frame(self, bg=self.app.colors.get("sidebar_bg"), height=100)
-        header.pack(fill="x", padx=20, pady=30)
+        self.header_frame = tk.Frame(self, bg=self.app.colors.get("sidebar_bg"), height=100)
+        self.header_frame.pack(fill="x", padx=10, pady=(20, 10))
         
+        # Toggle Button (Top Right)
+        self.toggle_btn = tk.Label(
+            self.header_frame, 
+            text="◂◂", 
+            font=self.app.ui_styles.get_font("sm", "bold"),
+            bg=self.app.colors.get("sidebar_bg"),
+            fg=self.app.colors.get("sidebar_divider"),
+            cursor="hand2"
+        )
+        self.toggle_btn.pack(side="top", anchor="e", padx=5)
+        self.toggle_btn.bind("<Button-1>", lambda e: self.toggle_collapse())
+
+        # Main Header Content (Avatar + Name)
+        self.header_content = tk.Frame(self.header_frame, bg=self.app.colors.get("sidebar_bg"))
+        self.header_content.pack(fill="both", expand=True)
+
         # Avatar Placeholder (Circle)
-        self.avatar_canvas = tk.Canvas(header, width=60, height=60, bg=self.app.colors.get("sidebar_bg"), highlightthickness=0, cursor="hand2")
+        self.avatar_canvas = tk.Canvas(self.header_content, width=60, height=60, bg=self.app.colors.get("sidebar_bg"), highlightthickness=0, cursor="hand2")
         self.avatar_canvas.pack(side="left")
         
         # Load existing avatar if available
@@ -42,11 +59,11 @@ class SidebarNav(tk.Frame):
         self.avatar_canvas.bind("<Button-1>", self._upload_avatar)
         
         # Name Info
-        info_frame = tk.Frame(header, bg=self.app.colors.get("sidebar_bg"))
-        info_frame.pack(side="left", padx=15, fill="both", expand=True)
+        self.info_frame = tk.Frame(self.header_content, bg=self.app.colors.get("sidebar_bg"))
+        self.info_frame.pack(side="left", padx=15, fill="both", expand=True)
         
         self.name_label = tk.Label(
-            info_frame, 
+            self.info_frame, 
             text=self.app.username or "Guest",
             font=self.app.ui_styles.get_font("sm", "bold"),
             bg=self.app.colors.get("sidebar_bg"),
@@ -56,7 +73,7 @@ class SidebarNav(tk.Frame):
         self.name_label.pack(fill="x", pady=(10, 0))
         
         self.edit_label = tk.Label(
-            info_frame, 
+            self.info_frame, 
             text="View Profile", 
             font=self.app.ui_styles.get_font("xs"),
             bg=self.app.colors.get("sidebar_bg"),
@@ -67,7 +84,7 @@ class SidebarNav(tk.Frame):
         self.edit_label.pack(fill="x")
         
         # Bind Name/Info to Open Profile Tab
-        for widget in [info_frame, self.name_label, self.edit_label]:
+        for widget in [self.info_frame, self.name_label, self.edit_label]:
             widget.bind("<Button-1>", lambda e: self.select_item("profile"))
             widget.configure(cursor="hand2")
         
@@ -269,6 +286,45 @@ class SidebarNav(tk.Frame):
         self.logout_btn_frame.configure(bg=bg_color)
         self.logout_icon.configure(bg=bg_color)
         self.logout_text.configure(bg=bg_color)
+
+    def toggle_collapse(self):
+        """Toggle between mini and full sidebar"""
+        self.is_collapsed = not self.is_collapsed
+        new_width = self.collapsed_width if self.is_collapsed else self.expanded_width
+        
+        # Update Container Width
+        self.configure(width=new_width)
+        
+        # Update Header
+        self.toggle_btn.configure(text="▸▸" if self.is_collapsed else "◂◂")
+        if self.is_collapsed:
+            self.info_frame.pack_forget()
+            self.header_frame.configure(padx=0)
+            self.avatar_canvas.pack(side="top", pady=10)
+        else:
+            self.info_frame.pack(side="left", padx=15, fill="both", expand=True)
+            self.header_frame.configure(padx=10)
+            self.avatar_canvas.pack(side="left", pady=0)
+
+        # Update Nav Items
+        for item_id, widgets in self.buttons.items():
+            if self.is_collapsed:
+                widgets["text"].pack_forget()
+                widgets["frame"].configure(padx=0)
+                widgets["icon"].pack(side="top", pady=10, fill="none", expand=True)
+            else:
+                widgets["text"].pack(side="left", padx=10)
+                widgets["frame"].configure(padx=0)
+                widgets["icon"].pack(side="left", padx=5)
+
+        # Update Footer
+        if hasattr(self, 'footer_frame'):
+            if self.is_collapsed:
+                self.logout_text.pack_forget()
+                self.logout_icon.pack(side="top", pady=10, fill="none", expand=True)
+            else:
+                self.logout_text.pack(side="left", padx=10)
+                self.logout_icon.pack(side="left", padx=5)
 
     def _update_item_style(self, item_id, is_active):
         if item_id not in self.buttons:
