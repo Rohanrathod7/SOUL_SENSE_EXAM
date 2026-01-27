@@ -38,7 +38,7 @@ class SidebarNav(tk.Frame):
         # Toggle Button (Top Right)
         self.toggle_btn = tk.Label(
             self.header_frame, 
-            text="◂◂", 
+            text="❮", 
             font=self.app.ui_styles.get_font("sm", "bold"),
             bg=self.app.colors.get("sidebar_bg"),
             fg=self.app.colors.get("sidebar_divider"),
@@ -298,35 +298,43 @@ class SidebarNav(tk.Frame):
         self.configure(width=new_width)
         
         # Update Header
-        self.toggle_btn.configure(text="▸▸" if self.is_collapsed else "◂◂")
+        self.toggle_btn.configure(text="❯" if self.is_collapsed else "❮")
         if self.is_collapsed:
             self.info_frame.pack_forget()
             self.header_frame.configure(padx=0)
             self.avatar_canvas.pack(side="top", pady=10)
         else:
+            self.avatar_canvas.pack_forget()
+            self.avatar_canvas.pack(side="left", pady=0)
             self.info_frame.pack(side="left", padx=15, fill="both", expand=True)
             self.header_frame.configure(padx=10)
-            self.avatar_canvas.pack(side="left", pady=0)
 
         # Update Nav Items
         for item_id, widgets in self.buttons.items():
+            # Clear all current packing to ensure order
+            widgets["indicator"].pack_forget()
+            widgets["icon"].pack_forget()
+            widgets["text"].pack_forget()
+            
             if self.is_collapsed:
-                widgets["text"].pack_forget()
                 widgets["frame"].configure(padx=0)
                 widgets["icon"].pack(side="top", pady=10, fill="none", expand=True)
             else:
-                widgets["text"].pack(side="left", padx=10)
                 widgets["frame"].configure(padx=0)
+                widgets["indicator"].pack(side="left", fill="y", pady=8, padx=(0, 8))
                 widgets["icon"].pack(side="left", padx=5)
+                widgets["text"].pack(side="left", padx=10)
 
         # Update Footer
         if hasattr(self, 'footer_frame'):
+            self.logout_icon.pack_forget()
+            self.logout_text.pack_forget()
+            
             if self.is_collapsed:
-                self.logout_text.pack_forget()
                 self.logout_icon.pack(side="top", pady=10, fill="none", expand=True)
             else:
-                self.logout_text.pack(side="left", padx=10)
                 self.logout_icon.pack(side="left", padx=5)
+                self.logout_text.pack(side="left", padx=10)
 
     def _update_item_style(self, item_id, is_active):
         if item_id not in self.buttons:

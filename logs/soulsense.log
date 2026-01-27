@@ -1078,3 +1078,50 @@ WHERE journal_entries.username = ? ORDER BY journal_entries.entry_date DESC
 2026-01-27 16:35:25 - app.shutdown_handler - INFO - [shutdown_handler.py:56] - Initiating graceful application shutdown...
 2026-01-27 16:35:25 - app.shutdown_handler - INFO - [shutdown_handler.py:65] - Database session committed and removed successfully
 2026-01-27 16:35:25 - app.shutdown_handler - INFO - [shutdown_handler.py:70] - Application shutdown complete
+2026-01-27 16:45:21 - root - INFO - [logger.py:85] - Logging initialized.
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:302] - Running startup integrity checks...
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:272] - Config integrity check passed
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:320] - ✓ config_integrity: Configuration is valid
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:195] - Required files check passed
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:320] - ✓ required_files: All required files and directories present
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:121] - Database schema check passed
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:320] - ✓ database_schema: All required tables present
+2026-01-27 16:45:21 - app.startup_checks - INFO - [startup_checks.py:345] - Integrity checks complete: 3 passed, 0 warnings, 0 failed
+2026-01-27 16:45:21 - __main__ - INFO - [main.py:132] - Startup Integrity Check Results:
+========================================
+✓ config_integrity: Configuration is valid
+✓ required_files: All required files and directories present
+✓ database_schema: All required tables present
+========================================
+2026-01-27 16:45:21 - __main__ - INFO - [main.py:161] - Preloading questions into memory...
+2026-01-27 16:45:21 - app.questions - INFO - [questions.py:52] - Loaded 100 active questions into memory.
+2026-01-27 16:45:23 - app.error_handler - CRITICAL - [error_handler.py:132] - [CRITICAL] main.startup: AttributeError - 'SidebarNav' object has no attribute 'buttons'
+Traceback (most recent call last):
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\main.py", line 183, in <module>
+    app = SoulSenseApp(root)
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\main.py", line 21, in __init__
+    self.initializer = AppInitializer(self)
+                       ~~~~~~~~~~~~~~^^^^^^
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ui\app_initializer.py", line 13, in __init__
+    self.setup_ui()
+    ~~~~~~~~~~~~~^^
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ui\app_initializer.py", line 54, in setup_ui
+    self.app.sidebar = SidebarNav(self.app.main_container, self.app, [
+                       ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        {"id": "home", "label": "Home", "icon": "🏠"},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        {"id": "history", "label": "History", "icon": "📚"},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ], on_change=self.app.switch_view)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ui\sidebar.py", line 28, in __init__
+    self._render_items()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ui\sidebar.py", line 166, in _render_items
+    self._create_nav_item(item)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "B:\Open_Source\soul_sence_Exam\SOUL_SENSE_EXAM\app\ui\sidebar.py", line 200, in _create_nav_item
+    self.buttons[item_id] = {
+    ^^^^^^^^^^^^
+AttributeError: 'SidebarNav' object has no attribute 'buttons'
