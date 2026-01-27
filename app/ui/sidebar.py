@@ -324,7 +324,7 @@ class SidebarNav(tk.Frame):
     def _animate_sidebar(self, target_width):
         """Step-based width animation"""
         current_width = self.winfo_width()
-        step = 20 # Pixels per frame
+        step = 15 # Optimized for smoother performance (was 20)
         
         if abs(current_width - target_width) <= step:
             self.configure(width=target_width)
@@ -333,7 +333,8 @@ class SidebarNav(tk.Frame):
 
         next_width = current_width + (step if target_width > current_width else -step)
         self.configure(width=next_width)
-        self.after(10, lambda: self._animate_sidebar(target_width))
+        # Increase delay to 20ms (50fps) to reduce main thread load during complex layout resizing
+        self.after(20, lambda: self._animate_sidebar(target_width))
 
     def _finalize_toggle_state(self):
         """Finalize UI elements after animation finish"""
