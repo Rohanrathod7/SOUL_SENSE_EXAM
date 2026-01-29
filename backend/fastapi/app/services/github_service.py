@@ -2,6 +2,8 @@ import httpx
 import time
 import asyncio
 import os
+import json
+import aiofiles
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from backend.fastapi.app.config import get_settings_instance
@@ -9,6 +11,8 @@ from backend.fastapi.app.config import get_settings_instance
 # NLTK Setup for Sentiment Analysis
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
+import json
+import aiofiles
 
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
@@ -39,7 +43,7 @@ class GitHubService:
         
         # Persistent Cache Setup
         self.CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "github_cache.json")
-        self._cache_lock = asyncio.Lock()
+        self._cache_lock = None # Lazy initialization
         
         # Load immediately (sync) but safely
         try:
@@ -72,10 +76,11 @@ class GitHubService:
         """Async save with lock to prevent race conditions."""
         if not self._cache: return
         
+        if self._cache_lock is None:
+            self._cache_lock = asyncio.Lock()
+
         try:
             async with self._cache_lock:
-                import json
-                import aiofiles
                 os.makedirs(os.path.dirname(self.CACHE_FILE), exist_ok=True)
                 async with aiofiles.open(self.CACHE_FILE, 'w', encoding='utf-8') as f:
                     await f.write(json.dumps(self._cache))
@@ -151,6 +156,96 @@ class GitHubService:
     async def _get_with_semaphore(self, endpoint: str, semaphore: asyncio.Semaphore) -> Any:
         async with semaphore:
             return await self._get(endpoint)
+
+    async def get_pulse_feed(self, limit: int = 15) -> List[Dict[str, Any]]:
+        """Fetch recent repository events and format them for a live pulse feed."""
+        cache_key = f"pulse:{self.owner}/{self.repo}"
+        # Cache for 5 minutes to be "near" real-time but save API requests
+        cached_data = self._get_cached_long_term(cache_key, 300) 
+        if cached_data:
+            return cached_data
+
+        events = await self._get(f"/repos/{self.owner}/{self.repo}/events", params={"per_page": 30})
+        
+        if not events:
+            # Fallback for Immunity Mode / API Failure
+            return [
+                {"user": "System", "action": "Pulse feed is currently in standby", "type": "system", "time": datetime.now().isoformat()},
+                {"user": "SoulSense", "action": "Monitoring engineering velocity...", "type": "system", "time": datetime.now().isoformat()}
+            ]
+
+        pulse = []
+        # Known bots and system accounts to exclude
+        EXCLUDED_LOGINS = {"github-actions[bot]", "ECWOC-Sentinel", "ecwoc-sentinel", "github-actions"}
+        
+        for e in events:
+            if len(pulse) >= limit:
+                break
+            try:
+                user = e.get('actor', {}).get('display_login', 'Unknown')
+                
+                # Bot Filtering
+                if user in EXCLUDED_LOGINS or "[bot]" in user.lower():
+                    continue
+
+                etype = e.get('type')
+                payload = e.get('payload', {})
+                created_at = e.get('created_at')
+                
+                action = ""
+                icon_type = ""
+                
+                if etype == "PushEvent":
+                    ref = payload.get('ref', '').split('/')[-1]
+                    count = len(payload.get('commits', []))
+                    action = f"pushed {count} commit{'s' if count != 1 else ''} to {ref}"
+                    icon_type = "push"
+                elif etype == "PullRequestEvent":
+                    pr_action = payload.get('action')
+                    number = payload.get('pull_request', {}).get('number')
+                    action = f"{pr_action} pull request #{number}"
+                    icon_type = "pr"
+                elif etype == "IssuesEvent":
+                    iss_action = payload.get('action')
+                    number = payload.get('issue', {}).get('number')
+                    action = f"{iss_action} issue #{number}"
+                    icon_type = "issue"
+                elif etype == "IssueCommentEvent":
+                    number = payload.get('issue', {}).get('number')
+                    action = f"commented on #{number}"
+                    icon_type = "comment"
+                elif etype == "WatchEvent":
+                    action = "starred the repository"
+                    icon_type = "star"
+                elif etype == "ForkEvent":
+                    action = "forked the repository"
+                    icon_type = "fork"
+                elif etype == "CreateEvent":
+                    ref_type = payload.get('ref_type')
+                    ref = payload.get('ref')
+                    action = f"created {ref_type} {ref}" if ref else f"created {ref_type}"
+                    icon_type = "create"
+                else:
+                    continue # Skip less interesting events
+
+                pulse.append({
+                    "user": user,
+                    "action": action,
+                    "time": created_at,
+                    "type": icon_type,
+                    "avatar": e.get('actor', {}).get('avatar_url')
+                })
+            except Exception:
+                continue
+
+        # Save to cache
+        if pulse:
+            self._cache[cache_key] = (pulse, time.time())
+            try:
+                await self._save_cache_to_disk()
+            except Exception: pass
+
+        return pulse
 
     async def get_repo_stats(self) -> Dict[str, Any]:
         """Fetch general repository statistics with high-impact demo defaults."""

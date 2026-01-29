@@ -11,6 +11,7 @@ import {
   Leaderboard,
   ContributionHeatmap,
   ReviewerMetrics,
+  ActivityPulse,
 } from '@/components/dashboard';
 import { Users, GitMerge, Star, GitCommit } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -40,16 +41,25 @@ export default function CommunityDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, contributorsRes, activityRes, mixRes, reviewsRes, graphRes, sunburstRes] =
-          await Promise.all([
-            fetch('/api/v1/community/stats'),
-            fetch('/api/v1/community/contributors?limit=20'),
-            fetch('/api/v1/community/activity'),
-            fetch('/api/v1/community/mix'),
-            fetch('/api/v1/community/reviews'),
-            fetch('/api/v1/community/graph'),
-            fetch('/api/v1/community/sunburst'),
-          ]);
+        const [
+          statsRes,
+          contributorsRes,
+          activityRes,
+          mixRes,
+          reviewsRes,
+          graphRes,
+          sunburstRes,
+          pulseRes,
+        ] = await Promise.all([
+          fetch('/api/v1/community/stats'),
+          fetch('/api/v1/community/contributors?limit=20'),
+          fetch('/api/v1/community/activity'),
+          fetch('/api/v1/community/mix'),
+          fetch('/api/v1/community/reviews'),
+          fetch('/api/v1/community/graph'),
+          fetch('/api/v1/community/sunburst'),
+          fetch('/api/v1/community/pulse'),
+        ]);
 
         if (
           !statsRes.ok ||
@@ -58,7 +68,8 @@ export default function CommunityDashboard() {
           !mixRes.ok ||
           !reviewsRes.ok ||
           !graphRes.ok ||
-          !sunburstRes.ok
+          !sunburstRes.ok ||
+          !pulseRes.ok
         ) {
           throw new Error('Failed to fetch community data');
         }
@@ -70,8 +81,9 @@ export default function CommunityDashboard() {
         const reviews = await reviewsRes.json();
         const graph = await graphRes.json();
         const sunburst = await sunburstRes.json();
+        const pulse = await pulseRes.json();
 
-        setData({ stats, contributors, activity, mix, reviews, graph, sunburst });
+        setData({ stats, contributors, activity, mix, reviews, graph, sunburst, pulse });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -137,21 +149,24 @@ export default function CommunityDashboard() {
               real-time.
             </p>
           </div>
-          <motion.a
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            href="https://github.com/nupurmadaan04/SOUL_SENSE_EXAM/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"
-            target="_blank"
-            className="group px-8 py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black rounded-2xl shadow-2xl flex items-center gap-2 transition-all overflow-hidden relative border border-transparent hover:border-blue-500/20 dark:hover:border-blue-400/20"
-          >
-            <span className="relative z-10 group-hover:scale-105 transition-transform duration-300">
-              CONTRIBUTE_NOW
-            </span>
-            <span className="relative z-10 group-hover:rotate-12 transition-transform duration-300">
-              ✨
-            </span>
-            <div className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </motion.a>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <ActivityPulse events={data.pulse} />
+            <motion.a
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              href="https://github.com/nupurmadaan04/SOUL_SENSE_EXAM/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"
+              target="_blank"
+              className="group px-6 py-2.5 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-bold text-xs rounded-xl shadow-xl flex items-center gap-2 transition-all overflow-hidden relative border border-transparent hover:border-blue-500/20 dark:hover:border-blue-400/20"
+            >
+              <span className="relative z-10 group-hover:scale-105 transition-transform duration-300">
+                CONTRIBUTE_NOW
+              </span>
+              <span className="relative z-10 group-hover:rotate-12 transition-transform duration-300 text-sm">
+                ✨
+              </span>
+              <div className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </motion.a>
+          </div>
         </motion.div>
 
         {/* Dynamic Bento Grid Layout */}

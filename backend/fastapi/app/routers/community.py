@@ -45,3 +45,8 @@ async def get_community_graph():
 async def get_repository_sunburst():
     """Get repository directory attention data for sunburst chart."""
     return await github_service.get_repository_sunburst()
+
+@router.get("/pulse")
+async def get_pulse_feed(limit: int = 15):
+    """Get recent repository activity for a live pulse feed."""
+    return await github_service.get_pulse_feed(limit)
