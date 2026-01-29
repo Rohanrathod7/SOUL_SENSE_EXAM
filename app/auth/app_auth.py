@@ -11,6 +11,7 @@ class AppAuth:
         self.app = app
         self.auth_manager = auth.AuthManager()
         self.logger = get_logger(__name__)
+        self.start_login_flow()
 
     def show_login_screen(self):
         """Show login popup on startup"""
@@ -113,6 +114,10 @@ class AppAuth:
             session.close()
         except Exception as e:
             self.logger.error(f"Error loading settings: {e}")
+
+    def start_login_flow(self):
+        """Start the login flow"""
+        self.app.root.after(100, self.show_login_screen)
 
     def _post_login_init(self):
         """Initialize UI after login"""
