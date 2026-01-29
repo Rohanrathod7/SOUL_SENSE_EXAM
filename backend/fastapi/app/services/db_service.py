@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 from datetime import datetime
 
 # Import model classes from root_models module (handles namespace collision)
-from app.root_models import Base, Score, Response, Question, QuestionCategory
+from ..root_models import Base, Score, Response, Question, QuestionCategory
 
 from ..config import get_settings
 

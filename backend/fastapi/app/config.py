@@ -13,8 +13,7 @@ BACKEND_DIR = ROOT_DIR / "backend"
 FASTAPI_DIR = BACKEND_DIR / "fastapi"
 ENV_FILE = ROOT_DIR / ".env"
 
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+# Only add backend-specific paths to avoid module name conflicts with main app
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 if str(FASTAPI_DIR) not in sys.path:

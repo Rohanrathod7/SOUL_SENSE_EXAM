@@ -29,10 +29,10 @@ jobs:
           pip install pytest pytest-mock pytest-cov flake8
 
       - name: Type Check Root App
-        run: mypy app/
+        run: mypy app/ --exclude backend/
 
       - name: Type Check Backend App
-        run: mypy app/
+        run: mypy .
         working-directory: ./backend/fastapi
 
       - name: Lint with flake8

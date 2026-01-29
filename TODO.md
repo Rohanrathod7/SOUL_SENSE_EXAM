@@ -1,12 +1,8 @@
-# Refactor SoulSenseApp Class - Single Responsibility Principle
+# Refactor View Switching Logic - Eliminate Code Duplication
 
 ## Tasks
-- [x] Refactor SoulSenseApp class in app/main.py to use composition
-- [x] Initialize AppInitializer, AppAuth, ViewManager, ShutdownHandler, UIStyles
-- [x] Move initialization logic to AppInitializer
-- [x] Move login and settings loading to AppAuth
-- [x] Delegate view switching to ViewManager
-- [x] Delegate theme application to UIStyles
-- [x] Delegate shutdown to ShutdownHandler
-- [x] Make SoulSenseApp a thin facade
-- [x] Test the application functionality
+- [ ] Instantiate ViewManager in SoulSenseApp.__init__
+- [ ] Delegate switch_view method from SoulSenseApp to ViewManager
+- [ ] Delegate all show_* methods from SoulSenseApp to ViewManager
+- [ ] Remove duplicated clear_screen method from SoulSenseApp
+- [ ] Test the refactoring to ensure functionality is preserved
