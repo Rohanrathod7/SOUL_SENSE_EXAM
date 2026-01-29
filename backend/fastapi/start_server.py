@@ -15,6 +15,7 @@ def check_dependencies():
         import uvicorn
         import sqlalchemy
         import pydantic_settings
+        import aiofiles
         return True
     except ImportError as e:
         print(f"DEBUG: Missing dependency: {e}")

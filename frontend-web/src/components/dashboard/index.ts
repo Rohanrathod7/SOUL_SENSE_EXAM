@@ -7,3 +7,6 @@ export * from './reviewer-metrics';
 export * from './contributor-details-modal';
 export * from './charts/activity-area-chart';
 export * from './charts/contribution-mix';
+export * from './pulse-feed';
+export * from './good-first-issues';
+export * from './project-roadmap';
