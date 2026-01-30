@@ -8,7 +8,7 @@ All backend services and routers should import models from this module
 instead of trying to import from 'app.models' directly.
 
 Usage:
-    from app.root_models import User, Score, Question, etc.
+    from api.root_models import User, Score, Question, etc.
 """
 from pathlib import Path
 import importlib.util

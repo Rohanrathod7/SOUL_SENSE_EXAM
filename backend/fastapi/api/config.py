@@ -174,9 +174,9 @@ def get_settings() -> BaseAppSettings:
 
     # Create appropriate settings class based on environment
     if env == "production":
-        return ProductionSettings()
+        return ProductionSettings() # type: ignore
     elif env == "staging":
-        return StagingSettings()
+        return StagingSettings() # type: ignore
     else:  # development
         return DevelopmentSettings()
 

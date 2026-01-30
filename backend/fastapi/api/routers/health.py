@@ -79,10 +79,10 @@ def check_database(db: Session) -> ServiceStatus:
     try:
         db.execute(text("SELECT 1"))
         latency = (time.perf_counter() - start) * 1000  # ms
-        return ServiceStatus(status="healthy", latency_ms=round(latency, 2))
+        return ServiceStatus(status="healthy", latency_ms=round(latency, 2), message=None)
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
-        return ServiceStatus(status="unhealthy", message=str(e))
+        return ServiceStatus(status="unhealthy", message=str(e), latency_ms=None)
 
 
 def get_diagnostics() -> Dict[str, Any]:
@@ -119,7 +119,9 @@ async def health_check() -> HealthResponse:
     return HealthResponse(
         status="healthy",
         timestamp=datetime.now(timezone.utc).isoformat(),
-        version=get_app_version()
+        version=get_app_version(),
+        services=None,
+        details=None
     )
 
 
@@ -184,5 +186,6 @@ async def startup_check(db: Session = Depends(get_db)) -> HealthResponse:
         status="healthy" if db_status.status == "healthy" else "unhealthy",
         timestamp=datetime.now(timezone.utc).isoformat(),
         version=get_app_version(),
-        services={"database": db_status}
+        services={"database": db_status},
+        details=None
     )

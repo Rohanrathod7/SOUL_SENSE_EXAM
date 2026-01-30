@@ -124,88 +124,61 @@ User Input → GUI Events → Business Logic → Data Validation → Database �
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-### Prerequisites
-
-- Python 3.11 (officially tested), may work with 3.12+ (see compatibility notes)
-- Git
-
-> **Python Version Notes**: The application is actively tested on Python 3.11. Newer versions (3.12, 3.13) may work but could have dependency compatibility issues. For the most stable experience, use Python 3.11.
-
-### One-Command Setup
+### 1. Setup Environment
 
 ```bash
-git clone https://github.com/nupurmadaan04/SOUL_SENSE_EXAM
-cd soul-sense-Exam/SOUL_SENSE_EXAM
-python -m scripts.setup_dev
-python -m app.main
-```
-
-That's it! The application will initialize the database, seed questions, and launch the GUI.
-
----
-
-## 📦 Installation
-
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/nupurmadaan04/SOUL_SENSE_EXAM
-cd soul-sense-Exam/SOUL_SENSE_EXAM
-```
-
-### 2. Virtual Environment (Recommended)
-
-```bash
-# Create
+# Create virtual environment
 python -m venv .venv
 
 # Activate (Windows)
-.venv\Scripts\Activate.ps1
-
+.venv\Scripts\activate
 # Activate (macOS/Linux)
 source .venv/bin/activate
-```
 
-### 3. Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Initialize Database & Seed Questions
+python -m scripts.setup_dev
 ```
 
-### 4. Initialize Database
+### 2. Launch Application
+
+Follow this order depending on which platform you want to run:
+
+#### **A. Desktop App (Primary)**
 
 ```bash
-# Run migrations
-alembic upgrade head
-
-# Seed question bank
-python scripts/setup/seed_questions_v2.py
-```
-
-### 5. Launch Application
-
-```bash
-# GUI Mode (Default)
 python -m app.main
+```
 
-# CLI Mode
-python -m app.cli
+#### **B. Backend API (Required for Web)**
 
-# API Server
-python -m uvicorn backend.fastapi.app.main:app --reload
+```bash
+python backend/fastapi/start_server.py
+```
 
-# Web Frontend
+_API will be available at http://localhost:8000. Use `--y` for non-interactive mode._
+
+#### **C. Web Frontend**
+
+```bash
 cd frontend-web
 npm install
 npm run dev
 ```
 
-> [!NOTE]
-> For detailed web development setup, coding standards, and architecture, see [frontend-web/README.md](frontend-web/README.md).
+_Web app will be available at http://localhost:3005. Requires Backend API to be running._
 
 ---
+
+> [!TIP]
+> **Developer Workflow**: If you are contributing specifically to the Web frontend, ensure the **Backend API** is running in a separate terminal so the dashboard and community features can fetch data.
+
+> [!NOTE]
+> For detailed architecture and contribution guidelines, see [frontend-web/README.md](frontend-web/README.md).
 
 ## 🎮 Usage
 
@@ -259,28 +232,24 @@ python scripts/outlier_analysis.py --user john_doe
 
 ---
 
-##  Development
+## Development
 
 ### Project Structure
 
 ```
 SOUL_SENSE_EXAM/
-├── app/                     # Core application
-│   ├── main.py             # Tkinter GUI entry point
-│   ├── cli.py              # Command-line interface
-│   ├── config.py           # Configuration management
-│   ├── db.py               # Database connection
-│   ├── models.py           # SQLAlchemy models
-│   ├── auth.py             # Authentication logic
-│   ├── ui/                 # UI components
-│   ├── ml/                 # ML modules
-│   └── services/           # Business logic
-├── backend/fastapi/        # REST API server
-├── data/                   # Persistent data
-├── scripts/                # Maintenance scripts
-├── tests/                  # Test suite
-├── docs/                   # Documentation
-└── requirements.txt        # Dependencies
+├── app/                     # Desktop Application package
+│   ├── main.py              # GUI entry point
+│   ├── cli.py               # CLI entry point
+│   └── ui/                  # Tkinter components
+├── backend/fastapi/         # REST API Ecosystem
+│   ├── api/                 # Core API logic (Models, Routers, Services)
+│   └── start_server.py      # Recommended API launcher
+├── frontend-web/            # Modern Next.js Web Client
+├── data/                    # Unified SQLite database and local logs
+├── scripts/                 # Setup, seeding, and maintenance utilities
+├── tests/                   # Pytest suite (covers App and API)
+└── requirements.txt         # Core dependencies
 ```
 
 ### Environment Configuration
@@ -419,23 +388,26 @@ Absolutely! Check our [Contributing Guide](docs/CONTRIBUTING.md) and open an iss
 
 **How do I run the API server?**
 
-```bash
-cd backend/fastapi
-python -m uvicorn app.main:app --reload --port 8000
-```
+Recommended way:
+`python backend/fastapi/start_server.py`
+
+Advanced way (Manual Uvicorn):
+`python -m uvicorn backend.fastapi.api.main:app --reload --port 8000`
 
 ---
 
-## � Troubleshooting
+## Troubleshooting
 
 ### Common Installation Issues
 
 **Python Version Compatibility**
+
 - Soul Sense is tested on Python 3.11
 - Newer versions (3.12+) may work but could have dependency conflicts
 - If you encounter issues, try Python 3.11 or check GitHub issues for known problems
 
 **Dependency Installation Errors**
+
 ```bash
 # Clear pip cache and reinstall
 pip cache purge
@@ -444,6 +416,7 @@ pip install -r requirements.txt --force-reinstall
 ```
 
 **Database Initialization Issues**
+
 ```bash
 # Reset database
 rm data/soulsense.db
@@ -452,10 +425,12 @@ python scripts/setup/seed_questions_v2.py
 ```
 
 **Permission Errors (Windows)**
+
 - Run command prompt as Administrator
 - Or use `pip install --user` for user-level installation
 
 **Tkinter Missing Error**
+
 - On Ubuntu/Debian: `sudo apt-get install python3-tk`
 - On macOS: Usually included with Python
 - On Windows: Reinstall Python with Tkinter option
@@ -463,15 +438,18 @@ python scripts/setup/seed_questions_v2.py
 ### Runtime Issues
 
 **Application Won't Start**
+
 - Check Python version: `python --version`
 - Verify virtual environment is activated
 - Check logs in `logs/` directory
 
 **Database Connection Errors**
+
 - Ensure `data/` directory exists and is writable
 - Check file permissions on `soulsense.db`
 
 **GUI Display Issues**
+
 - Set `DISPLAY` environment variable on Linux
 - Try running with `--no-gui` flag for CLI mode
 
