@@ -20,9 +20,11 @@ Soul Sense is a comprehensive Emotional Intelligence (EQ) assessment application
 
 ### System Requirements
 - **Operating System**: Windows 10/11, macOS 10.14+, or Linux
-- **Python**: Version 3.11 or higher (automatically handled by installer)
+- **Python**: Version 3.11 (officially tested), may be compatible with newer versions (3.12, 3.13)
 - **Storage**: At least 500MB free disk space
 - **Internet**: Not required for core features (optional for updates)
+
+> **Python Version Compatibility**: Soul Sense is developed and tested on Python 3.11. While it may work with newer Python versions, some dependencies might have compatibility issues. If you encounter problems with Python versions newer than 3.11, please check the project's GitHub repository for known issues or consider using Python 3.11 for the most stable experience.
 
 ### Installation
 1. Download the Soul Sense installer from the official website

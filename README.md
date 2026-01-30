@@ -4,7 +4,7 @@
 
 **A comprehensive Emotional Intelligence assessment platform with AI-powered insights, journaling, and multi-language support.**
 
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](tests/)
 ![Visitors](https://visitor-badge.laobi.icu/badge?page_id=nupurmadaan04.SOUL_SENSE_EXAM)
@@ -128,8 +128,10 @@ User Input → GUI Events → Business Logic → Data Validation → Database �
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11 (officially tested), may work with 3.12+ (see compatibility notes)
 - Git
+
+> **Python Version Notes**: The application is actively tested on Python 3.11. Newer versions (3.12, 3.13) may work but could have dependency compatibility issues. For the most stable experience, use Python 3.11.
 
 ### One-Command Setup
 
@@ -424,7 +426,60 @@ python -m uvicorn app.main:app --reload --port 8000
 
 ---
 
-## 📄 License
+## � Troubleshooting
+
+### Common Installation Issues
+
+**Python Version Compatibility**
+- Soul Sense is tested on Python 3.11
+- Newer versions (3.12+) may work but could have dependency conflicts
+- If you encounter issues, try Python 3.11 or check GitHub issues for known problems
+
+**Dependency Installation Errors**
+```bash
+# Clear pip cache and reinstall
+pip cache purge
+pip install --upgrade pip
+pip install -r requirements.txt --force-reinstall
+```
+
+**Database Initialization Issues**
+```bash
+# Reset database
+rm data/soulsense.db
+alembic upgrade head
+python scripts/setup/seed_questions_v2.py
+```
+
+**Permission Errors (Windows)**
+- Run command prompt as Administrator
+- Or use `pip install --user` for user-level installation
+
+**Tkinter Missing Error**
+- On Ubuntu/Debian: `sudo apt-get install python3-tk`
+- On macOS: Usually included with Python
+- On Windows: Reinstall Python with Tkinter option
+
+### Runtime Issues
+
+**Application Won't Start**
+- Check Python version: `python --version`
+- Verify virtual environment is activated
+- Check logs in `logs/` directory
+
+**Database Connection Errors**
+- Ensure `data/` directory exists and is writable
+- Check file permissions on `soulsense.db`
+
+**GUI Display Issues**
+- Set `DISPLAY` environment variable on Linux
+- Try running with `--no-gui` flag for CLI mode
+
+For more help, check the [User Manual](docs/USER_MANUAL.md) or open an issue on GitHub.
+
+---
+
+## �📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
