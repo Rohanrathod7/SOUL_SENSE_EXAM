@@ -546,6 +546,7 @@ class ResultsManager:
             ("\U0001f4ca Dashboard", "#14B8A6", self.app.open_dashboard_flow if hasattr(self.app, 'open_dashboard_flow') else None),
             ("\U0001f4c8 Analysis", "#EC4899", self.show_detailed_analysis),
             ("\U0001f916 AI Insights", "#8B5CF6", self.show_ml_analysis if hasattr(self.app, 'ml_predictor') and self.app.ml_predictor else None),
+            ("📝 Daily Journal", "#9C27B0", lambda: self.app.switch_view('journal')),
             ("💼 Satisfaction", "#178240", self.show_satisfaction_survey),
             ("\U0001f4c4 Export PDF", "#06B6D4", self.export_results_pdf),
             ("\U0001f504 Retake Test", "#3B82F6", self.reset_test),
