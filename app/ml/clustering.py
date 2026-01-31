@@ -413,6 +413,10 @@ class EmotionalProfileClusterer:
         
         self.feature_extractor = EmotionalFeatureExtractor()
         self.is_fitted = False
+        
+        self.cluster_centers_ = None
+        self.labels_ = None
+        self.user_profiles = {}
 
     def _get_scaler(self):
         if self.scaler is None:
@@ -423,9 +427,20 @@ class EmotionalProfileClusterer:
         if self.pca is None:
             self.pca = _get_sklearn_imports()['PCA'](n_components=2)
         return self.pca
-        self.cluster_centers_ = None
-        self.labels_ = None
-        self.user_profiles = {}
+
+    def _initialize_attributes(self):
+        """Helper to initialize attributes if they are missing (e.g. unpickling issues)"""
+        if not hasattr(self, 'user_profiles'):
+             self.user_profiles = {}
+        if not hasattr(self, 'cluster_centers_'):
+             self.cluster_centers_ = None
+        if not hasattr(self, 'labels_'):
+             self.labels_ = None
+            
+    def _ensure_user_profiles_exists(self):
+        # Compatibility fix
+        if not hasattr(self, 'user_profiles'):
+            self.user_profiles = {}
         
         # Model save path
         self.model_path = Path(__file__).parent / "models" / "clustering"
